@@ -1,0 +1,33 @@
+{
+  "prettier.enable": false,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+  },
+  "eslint.validate": [
+    "javascript",
+    "typescript",
+    "html",
+    "markdown",
+    "json",
+    "jsonc",
+    "yaml",
+    "toml",
+    "xml",
+    "gql",
+    "graphql",
+    "astro",
+    "css",
+    "less",
+    "scss",
+    "pcss",
+    "postcss"
+  ],
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "conventionalCommits.emojiFormat": "emoji",
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsdk": "node_modules\\typescript\\lib"
+}
