@@ -4,7 +4,7 @@ import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_const
 import { InternalErrorCode } from '#constants/internal_error_constant'
 import { TaggedException } from '#core/error_and_exception/tagged_exception'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
-import { SchemaUtility } from '#utils/schema_utility'
+import { SchemaUtility } from '#core/schema/utils/schema_utility'
 import { Exception } from '@adonisjs/core/exceptions'
 import is from '@adonisjs/core/helpers/is'
 import app from '@adonisjs/core/services/app'
