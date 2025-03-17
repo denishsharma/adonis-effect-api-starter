@@ -142,8 +142,10 @@ export namespace ErrorUtility {
    * be converted to an internal server exception.
    *
    * @param error The error to convert to a known exception.
+   * @param message The message for the internal server exception.
+   * @param options Additional options for the internal server exception.
    */
-  export function toKnownException(error: unknown) {
+  export function toKnownException(error: unknown, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
     return Match.type<unknown>().pipe(
       Match.when(isException(), err => err),
       Match.when(
@@ -154,7 +156,7 @@ export namespace ErrorUtility {
         (err: unknown) => err instanceof vineErrors.E_VALIDATION_ERROR,
         err => ValidationException.fromException(err),
       ),
-      Match.orElse(() => toInternalServerException(error)),
+      Match.orElse(() => toInternalServerException(error, message, options)),
     )(error)
   }
 }

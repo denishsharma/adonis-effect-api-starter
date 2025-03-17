@@ -3,9 +3,7 @@ import type { RequestValidationOptions } from '@adonisjs/core/types/http'
 import type { VineValidator } from '@vinejs/vine'
 import type { Infer, SchemaTypes } from '@vinejs/vine/types'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
-import ValidationException from '#exceptions/validation_exception'
-import { errors } from '@vinejs/vine'
-import { Effect, Match } from 'effect'
+import { Effect } from 'effect'
 
 export class ValidateRequestService extends Effect.Service<ValidateRequestService>()('@service/http/validate_request', {
   effect: Effect.gen(function* () {
@@ -37,15 +35,7 @@ export class ValidateRequestService extends Effect.Service<ValidateRequestServic
 
         return yield* Effect.tryPromise({
           try: async () => (await validator.validate(data, options as any)) as Infer<typeof validator>,
-          catch: (error) => {
-            return Match.value(error).pipe(
-              Match.when(
-                (err: unknown) => err instanceof errors.E_VALIDATION_ERROR,
-                err => ValidationException.fromException(err),
-              ),
-              Match.orElse(err => ErrorUtility.toInternalServerException(err, 'Unexpected error occurred while validating the request.')),
-            )
-          },
+          catch: error => ErrorUtility.toKnownException(error, 'Unknown error occurred while validating the request data.'),
         })
       })
     }
