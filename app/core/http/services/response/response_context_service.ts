@@ -1,49 +1,83 @@
 import type { ResponseDataMode } from '#core/http/constants/response_data_mode_constant'
-import { CurrentResponseContext } from '#core/http/contexts/current_response_context'
+import { CurrentHttpContext } from '#core/http/contexts/current_http_context'
 import { DefaultResponseMetadataDetails } from '#core/http/schemas/response_metadata_details_schema'
+import { EffectUtility } from '#utils/effect_utility'
 import { defu } from 'defu'
-import { Effect, Ref } from 'effect'
+import { Effect } from 'effect'
 import * as lodash from 'lodash-es'
 
 export class ResposneContextService extends Effect.Service<ResposneContextService>()('@service/http/response_context', {
   accessors: true,
   effect: Effect.gen(function* () {
-    const annotateMetadata = Effect.fn(function* (metadata: Record<string, unknown>) {
-      const currentResponseContext = yield* CurrentResponseContext
-      const existingMetadata = yield* currentResponseContext.metadata.get
-      yield* Ref.set(currentResponseContext.metadata, defu(lodash.omit(metadata, Object.keys(DefaultResponseMetadataDetails.fields)), existingMetadata))
-    })
+    function annotateMetadata(data: Record<string, unknown>) {
+      return Effect.gen(function* () {
+        const { available, withContext } = yield* CurrentHttpContext
 
-    const replaceMetadata = Effect.fn(function* (metadata: Record<string, unknown>) {
-      const currentResponseContext = yield* CurrentResponseContext
-      const existingMetadata = yield* currentResponseContext.metadata.get
-      yield* Ref.set(currentResponseContext.metadata, defu(lodash.pick(existingMetadata, Object.keys(DefaultResponseMetadataDetails.fields)), metadata))
-    })
+        const existingMetadata = available ? yield* withContext(ctx => Effect.succeed(ctx.response.context().access().metadata)) : {} as Record<string, unknown>
+        const newMetadata = defu(lodash.omit(data, Object.keys(DefaultResponseMetadataDetails.fields)), existingMetadata)
+        yield* withContext(ctx => Effect.sync(() => ctx.response.context().override.metadata(newMetadata)))
+      }).pipe(
+        EffectUtility.withSuccessType<void>(),
+      )
+    }
 
-    const metadata = Effect.fn(function* () {
-      const currentResponseContext = yield* CurrentResponseContext
-      return yield* currentResponseContext.metadata.get
-    })
+    function replaceMetadata(data: Record<string, unknown>) {
+      return Effect.gen(function* () {
+        const { available, withContext } = yield* CurrentHttpContext
 
-    const specifyDataMode = Effect.fn(function* (dataMode: ResponseDataMode) {
-      const currentResponseContext = yield* CurrentResponseContext
-      yield* Ref.set(currentResponseContext.dataMode, dataMode)
-    })
+        const existingMetadata = available ? yield* withContext(ctx => Effect.succeed(ctx.response.context().access().metadata)) : {}
+        const newMetadata = defu(lodash.pick(existingMetadata, Object.keys(DefaultResponseMetadataDetails.fields)), data)
 
-    const dataMode = Effect.fn(function* () {
-      const currentResponseContext = yield* CurrentResponseContext
-      return yield* currentResponseContext.dataMode.get
-    })
+        yield* withContext(ctx => Effect.sync(() => ctx.response.context().override.metadata(newMetadata)))
+      }).pipe(
+        EffectUtility.withSuccessType<void>(),
+      )
+    }
 
-    const specifyMessage = Effect.fn(function* (message: string) {
-      const currentResponseContext = yield* CurrentResponseContext
-      yield* Ref.set(currentResponseContext.message, message)
-    })
+    function metadata() {
+      return Effect.gen(function* () {
+        const { available, withContext } = yield* CurrentHttpContext
+        return available ? yield* withContext(ctx => Effect.succeed(ctx.response.context().access().metadata)) : {}
+      }).pipe(
+        EffectUtility.withSuccessType<Record<string, unknown>>(),
+      )
+    }
 
-    const message = Effect.fn(function* () {
-      const currentResponseContext = yield* CurrentResponseContext
-      return yield* currentResponseContext.message.get
-    })
+    function specifyDataMode(mode: ResponseDataMode) {
+      return Effect.gen(function* () {
+        const { withContext } = yield* CurrentHttpContext
+        yield* withContext(ctx => Effect.sync(() => ctx.response.context().override.dataMode(mode)))
+      }).pipe(
+        EffectUtility.withSuccessType<void>(),
+      )
+    }
+
+    function dataMode() {
+      return Effect.gen(function* () {
+        const { available, withContext } = yield* CurrentHttpContext
+        return available ? yield* withContext(ctx => Effect.succeed(ctx.response.context().access().dataMode)) : undefined
+      }).pipe(
+        EffectUtility.withSuccessType<undefined | ResponseDataMode>(),
+      )
+    }
+
+    function specifyMessage(resposneMessage: string) {
+      return Effect.gen(function* () {
+        const { withContext } = yield* CurrentHttpContext
+        yield* withContext(ctx => Effect.sync(() => ctx.response.context().override.message(resposneMessage)))
+      }).pipe(
+        EffectUtility.withSuccessType<void>(),
+      )
+    }
+
+    function message() {
+      return Effect.gen(function* () {
+        const { available, withContext } = yield* CurrentHttpContext
+        return available ? yield* withContext(ctx => Effect.succeed(ctx.response.context().access().message)) : undefined
+      }).pipe(
+        EffectUtility.withSuccessType<undefined | string>(),
+      )
+    }
 
     return {
       /**

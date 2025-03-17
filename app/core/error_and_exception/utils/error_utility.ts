@@ -120,7 +120,7 @@ export namespace ErrorUtility {
    * @param options Additional options for the internal server exception.
    */
   export function toInternalServerException(error: unknown, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-    if (isInternalError()(error) || error instanceof Exception || is.error(error)) {
+    if (isInternalError()(error) || error instanceof Exception || error instanceof TypeError || error instanceof Error) {
       return new InternalServerException(error, message, options)
     }
 

@@ -116,7 +116,7 @@ export default class RuntimeMiddleware {
        */
       const response = await program.pipe(
         RuntimeUtility.ensureDependencies(),
-        RuntimeUtility.run(),
+        RuntimeUtility.run({ ctx }),
       )
 
       /**

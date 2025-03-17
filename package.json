@@ -30,6 +30,7 @@
     "#core/*": "./app/core/*.js",
     "#constants/*": "./app/constants/*.js",
     "#errors/*": "./app/errors/*.js",
+    "#extensions/*": "./extensions/*.js",
     "#database/*": "./database/*.js",
     "#start/*": "./start/*.js",
     "#tests/*": "./tests/*.js",

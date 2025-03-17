@@ -1,11 +1,12 @@
+import type { HttpContext } from '@adonisjs/core/http'
 import type { ManagedRuntime, Scope } from 'effect'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
-import { CurrentResponseContext } from '#core/http/contexts/current_response_context'
+import { CurrentHttpContext } from '#core/http/contexts/current_http_context'
 import UnexpectedRuntimeExitResultError from '#errors/unexpected_runtime_exit_result_error'
 import InternalServerException from '#exceptions/internal_server_exception'
 import { ApplicationRuntime } from '#start/runtime'
 import logger from '@adonisjs/core/services/logger'
-import { Cause, Effect, Exit, Function, Match, Ref } from 'effect'
+import { Cause, Effect, Exit, Function, Match, Option, Ref } from 'effect'
 
 export namespace RuntimeUtility {
   /**
@@ -27,7 +28,7 @@ export namespace RuntimeUtility {
    * Ensure that effect already has `Scope` as a dependency.
    */
   type ResolveRequirement<T, L> = [T] extends [never] ? L : T extends L ? T : T | L
-  type R = ResolveRequirement<C, Scope.Scope | CurrentResponseContext>
+  type R = ResolveRequirement<C, Scope.Scope | CurrentHttpContext>
 
   /**
    * Ensures that the effect has all of its dependencies resolved
@@ -85,8 +86,6 @@ export namespace RuntimeUtility {
    *
    * It also logs any errors that occur during the processing
    * of the content.
-   *
-   * @param self The effectful program to wrap in a managed runtime
    */
   export const managed = Effect.fn(function* <A, E>(self: Effect.Effect<A, E, R>) {
     return yield* self.pipe(
@@ -140,25 +139,33 @@ export namespace RuntimeUtility {
        * internal server exceptions.
        */
       Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toKnownException(defect))),
-      CurrentResponseContext.provide(),
     )
   })
+
+  /**
+   * Options to run the effectful program in the application runtime.
+   */
+  interface RuntimeExecutionOptions {
+    signal?: AbortSignal
+    ctx?: HttpContext
+  }
 
   /**
    * Runs the effectful program in the application runtime.
    *
    * @param options The options to run the effectful program
-   *
-   * @param self The effectful program to run in the application runtime
    */
-  export const run: {
-    <A, E>(options?: { readonly signal?: AbortSignal | undefined }): (self: Effect.Effect<A, E, R>) => Promise<A>
-    <A, E>(self: Effect.Effect<A, E, R>, options?: { readonly signal?: AbortSignal | undefined }): Promise<A>
-  } = Function.dual(
-    args => Effect.isEffect(args[1]),
-    async (self: Effect.Effect<unknown, unknown, R>, options?: { readonly signal?: AbortSignal | undefined }): Promise<unknown> => {
-      const result = await ApplicationRuntime.runPromiseExit(Effect.suspend(() => managed(self)), options)
+  export function run<A, E>(options?: RuntimeExecutionOptions) {
+    return async (self: Effect.Effect<A, E, R>): Promise<A> => {
+      const result = await ApplicationRuntime.runPromiseExit(
+        Effect.suspend(() =>
+          managed(self).pipe(
+            CurrentHttpContext.provide(Option.fromNullable(options?.ctx)),
+          ),
+        ),
+        options,
+      )
       return handleRuntimeExitResult(result)
-    },
-  )
+    }
+  }
 }

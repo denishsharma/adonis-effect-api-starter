@@ -59,7 +59,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         )
       }).pipe(
         RuntimeUtility.ensureDependencies(),
-        RuntimeUtility.run(),
+        RuntimeUtility.run({ ctx }),
       )
     } catch (cause) {
       /**

@@ -8,6 +8,7 @@
 */
 
 import { HttpRequestService } from '#core/http/services/request_service'
+import { HttpResponseService } from '#core/http/services/response_service'
 import { RuntimeUtility } from '#utils/runtime_utility'
 import { SchemaUtility } from '#utils/schema_utility'
 import router from '@adonisjs/core/services/router'
@@ -15,7 +16,8 @@ import vine from '@vinejs/vine'
 import { Effect, Schema } from 'effect'
 
 router.get('/', async (ctx) => {
-  return Effect.gen(function* () {
+  return await Effect.gen(function* () {
+    const responseService = yield* HttpResponseService
     const requestService = yield* HttpRequestService
 
     const payload = yield* requestService.validator.validateUsing(
@@ -42,10 +44,13 @@ router.get('/', async (ctx) => {
       )),
     )
 
+    yield* responseService.context.specifyMessage(`Hello, ${payload.name}!`)
+
     return {
       hello: payload.name,
     }
   }).pipe(
     RuntimeUtility.ensureDependencies(),
+    RuntimeUtility.run({ ctx }),
   )
 })
