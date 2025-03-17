@@ -10,9 +10,13 @@ export default antfu(
       quotes: 'single',
       overrides: {
         'style/comma-dangle': ['error', 'always-multiline'],
-        'style/array-bracket-newline': ['error', { multiline: true }],
+        'style/array-bracket-newline': ['error', { multiline: true, minItems: 3 }],
         'style/function-call-argument-newline': ['error', 'consistent'],
-        'style/brace-style': ['error', '1tbs', { allowSingleLine: true }],
+        'style/brace-style': [
+          'error',
+          '1tbs',
+          { allowSingleLine: true },
+        ],
         'style/max-statements-per-line': ['error', { max: 2 }],
         'style/wrap-regex': 'error',
       },
@@ -22,11 +26,17 @@ export default antfu(
       overrides: {
         'ts/no-shadow': 'error',
         'ts/no-redeclare': 'off',
+        'ts/no-namespace': 'off',
+        'ts/array-type': ['error', { default: 'array' }],
         'ts/naming-convention': [
           'error',
           {
             selector: 'variable',
-            format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
+            format: [
+              'camelCase',
+              'UPPER_CASE',
+              'PascalCase',
+            ],
           },
           {
             selector: 'typeLike',

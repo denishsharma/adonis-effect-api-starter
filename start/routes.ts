@@ -8,9 +8,12 @@
 */
 
 import router from '@adonisjs/core/services/router'
+import { Effect } from 'effect'
 
-router.get('/', async () => {
-  return {
-    hello: 'world',
-  }
+router.get('/', () => {
+  return Effect.gen(function* () {
+    return {
+      hello: 'world',
+    }
+  })
 })
