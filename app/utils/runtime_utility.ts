@@ -133,13 +133,13 @@ export namespace RuntimeUtility {
        */
       Effect.catchIf(
         error => !ErrorUtility.isException()(error),
-        error => Effect.fail(ErrorUtility.toInternalServerException(error)),
+        error => Effect.fail(ErrorUtility.toKnownException(error)),
       ),
       /**
        * Catch all defects and convert them to
        * internal server exceptions.
        */
-      Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toInternalServerException(defect))),
+      Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toKnownException(defect))),
       CurrentResponseContext.provide(),
     )
   })

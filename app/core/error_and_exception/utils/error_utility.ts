@@ -6,8 +6,13 @@ import { InternalErrorCode, InternalErrorCodeMetadata } from '#constants/interna
 import { EXCEPTION_MARKER } from '#core/error_and_exception/tagged_exception'
 import { INTERNAL_ERROR_MARKER } from '#core/error_and_exception/tagged_internal_error'
 import InternalServerException from '#exceptions/internal_server_exception'
+import RouteNotFoundException from '#exceptions/route_not_found_exception'
+import ValidationException from '#exceptions/validation_exception'
+import { errors as appErrors } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
 import is from '@adonisjs/core/helpers/is'
+import { errors as vineErrors } from '@vinejs/vine'
+import { Match } from 'effect'
 
 export namespace ErrorUtility {
   /**
@@ -122,5 +127,34 @@ export namespace ErrorUtility {
     return new InternalServerException(new Error(
       'toString' in (error as any) ? (error as any).toString() : InternalErrorCodeMetadata[InternalErrorCode.I_UNKNOWN_ERROR].message,
     ), message, options)
+  }
+
+  /**
+   * Converts the given unknown error to a known exception.
+   *
+   * If the given error is an instance of tagged exception,
+   * it will be returned as is.
+   *
+   * Otherwise, it will be matched against known exceptions
+   * and converted to the corresponding known exception.
+   *
+   * If the given error is not a known exception, it will
+   * be converted to an internal server exception.
+   *
+   * @param error The error to convert to a known exception.
+   */
+  export function toKnownException(error: unknown) {
+    return Match.type<unknown>().pipe(
+      Match.when(isException(), err => err),
+      Match.when(
+        (err: unknown) => err instanceof appErrors.E_ROUTE_NOT_FOUND,
+        err => RouteNotFoundException.fromException(err),
+      ),
+      Match.when(
+        (err: unknown) => err instanceof vineErrors.E_VALIDATION_ERROR,
+        err => ValidationException.fromException(err),
+      ),
+      Match.orElse(() => toInternalServerException(error)),
+    )(error)
   }
 }

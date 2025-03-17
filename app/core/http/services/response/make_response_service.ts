@@ -4,7 +4,7 @@ import { ResponseDataMode } from '#core/http/constants/response_data_mode_consta
 import { ResponseType } from '#core/http/constants/response_type_constant'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
 import { SuccessResponse } from '#core/http/schemas/success_response_schema'
-import { ResposneContextService } from '#core/http/services/response_context_service'
+import { ResposneContextService } from '#core/http/services/response/response_context_service'
 import { HttpUtility } from '#core/http/utils/http_utility'
 import { SchemaUtility } from '#utils/schema_utility'
 import { defu } from 'defu'

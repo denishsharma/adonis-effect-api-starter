@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
-import { ResponseService } from '#core/http/services/response_service'
+import { HttpResponseService } from '#core/http/services/response_service'
 import { RuntimeUtility } from '#utils/runtime_utility'
 import is from '@adonisjs/core/helpers/is'
 import { Effect, Either, Ref, Schema } from 'effect'
@@ -25,7 +25,7 @@ export default class RuntimeMiddleware {
       const content = ctx.response.content![0]
 
       const program = Effect.gen(function* () {
-        const responseService = yield* ResponseService
+        const responseService = yield* HttpResponseService
 
         /**
          * Wrap the content in an effectful program

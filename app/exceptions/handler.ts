@@ -4,15 +4,13 @@ import { ExceptionCode } from '#constants/exception_constant'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
 import { ResponseType } from '#core/http/constants/response_type_constant'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
-import { ResponseService } from '#core/http/services/response_service'
-import RouteNotFoundException from '#exceptions/route_not_found_exception'
+import { HttpResponseService } from '#core/http/services/response_service'
 import { RuntimeUtility } from '#utils/runtime_utility'
 import { SchemaUtility } from '#utils/schema_utility'
-import { errors } from '@adonisjs/core'
 import { ExceptionHandler } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { Cause, Effect, Match, Schema } from 'effect'
+import { Cause, Effect, Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
@@ -47,22 +45,14 @@ export default class HttpExceptionHandler extends ExceptionHandler {
      * Convert the error to a tagged exception,
      * and handle the exception based on its type.
      */
-    const exception = Match.value(error).pipe(
-      Match.when(ErrorUtility.isException<any, any>(), err => err),
-      Match.when(
-        (_: unknown) => _ instanceof errors.E_ROUTE_NOT_FOUND,
-        _ => RouteNotFoundException.fromException(_) as TaggedException<any, any>,
-      ),
-      Match.orElse(err => ErrorUtility.toInternalServerException(err) as TaggedException<any, any>),
-    ) satisfies TaggedException<any, any>
-
+    const exception = ErrorUtility.toKnownException(error) as TaggedException<any, any>
     /**
      * Serialize the exception to a response
      */
     let response = {} as Schema.Schema.Encoded<typeof ExceptionResponse>
     try {
       response = await Effect.gen(function* () {
-        const responseService = yield* ResponseService
+        const responseService = yield* HttpResponseService
         const exceptionResposne = yield* responseService.make.exception(ctx)(exception)
         return yield* Schema.encode(ExceptionResponse, { errors: 'all' })(exceptionResposne).pipe(
           SchemaUtility.toSchemaParseError('Unexpected error while encoding exception response', exceptionResposne),

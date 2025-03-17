@@ -1,5 +1,6 @@
 export enum ExceptionCode {
   E_ROUTE_NOT_FOUND = 'E_ROUTE_NOT_FOUND',
+  E_VALIDATION_ERROR = 'E_VALIDATION_ERROR',
   E_INTERNAL_SERVER_ERROR = 'E_INTERNAL_SERVER_ERROR',
 }
 
@@ -22,5 +23,8 @@ export const ExceptionCodeMetadata: Record<ExceptionCode, ExceptionCodeMetadata>
   },
   [ExceptionCode.E_INTERNAL_SERVER_ERROR]: {
     message: 'Unexpected error occurred while processing the request and the server is unable to fulfill the request.',
+  },
+  [ExceptionCode.E_VALIDATION_ERROR]: {
+    message: 'Validation failed for the request while processing the request payload.',
   },
 }

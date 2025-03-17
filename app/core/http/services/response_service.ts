@@ -1,8 +1,8 @@
-import { MakeResponseService } from '#core/http/services/make_response_service'
-import { ResposneContextService } from '#core/http/services/response_context_service'
+import { MakeResponseService } from '#core/http/services/response/make_response_service'
+import { ResposneContextService } from '#core/http/services/response/response_context_service'
 import { Effect } from 'effect'
 
-export class ResponseService extends Effect.Service<ResponseService>()('@service/effect/response', {
+export class HttpResponseService extends Effect.Service<HttpResponseService>()('@service/http/response', {
   dependencies: [ResposneContextService.Default, MakeResponseService.Default],
   effect: Effect.gen(function* () {
     const context = yield* ResposneContextService
