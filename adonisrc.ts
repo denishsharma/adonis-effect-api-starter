@@ -43,6 +43,7 @@ export default defineConfig({
   */
   preloads: [
     () => import('#start/telemetry'),
+    () => import('#start/runtime'),
     () => import('#start/routes'),
     () => import('#start/kernel'),
   ],

@@ -2,11 +2,11 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { ManagedRuntime, Scope } from 'effect'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
 import { CurrentHttpContext } from '#core/http/contexts/current_http_context'
-import { ApplicationRuntime } from '#core/runtime/runtime'
 import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
 import UnexpectedRuntimeExitResultError from '#errors/unexpected_runtime_exit_result_error'
-
 import InternalServerException from '#exceptions/internal_server_exception'
+
+import { ApplicationRuntime } from '#start/runtime'
 import logger from '@adonisjs/core/services/logger'
 import { Cause, Effect, Exit, Function, Match, Option, Ref } from 'effect'
 
