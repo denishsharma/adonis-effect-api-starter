@@ -72,7 +72,7 @@ export default class InternalServerException<T extends string, F extends Schema.
             cause,
             stack: cause.stack,
             data: () => Effect.gen(this, function* () {
-              if (is.nullOrUndefined(this.schema) || is.nullOrUndefined(err.schema)) {
+              if (is.nullOrUndefined(this.schema)) {
                 return Option.none()
               }
 

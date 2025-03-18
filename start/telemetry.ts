@@ -1,3 +1,13 @@
+/*
+|--------------------------------------------------------------------------
+| OpenTelemetry Configuration
+|--------------------------------------------------------------------------
+|
+| Here you can define the configuration for OpenTelemetry. The configuration
+| is loaded when the application starts.
+|
+*/
+
 import env from '#start/env'
 import opentelemetry from '@opentelemetry/api'
 import otelLogs from '@opentelemetry/api-logs'

@@ -11,6 +11,7 @@ import openTelemetry from '@opentelemetry/api'
 import otelLogs from '@opentelemetry/api-logs'
 import { defu } from 'defu'
 import { Array, Effect, FiberId, Inspectable, Layer, Logger, Match, Option } from 'effect'
+import * as lodash from 'lodash-es'
 
 export namespace TelemetryUtility {
   /**
@@ -251,6 +252,7 @@ export namespace TelemetryUtility {
               kind: e._kind,
               message: e.message,
               data: errorData,
+              stack: e.stack,
               cause: is.nullOrUndefined(e.cause)
                 ? undefined
                 : {
@@ -279,6 +281,7 @@ export namespace TelemetryUtility {
               kind: 'adonis_exception',
               message: e.message,
               data: 'data' in e ? (e.data as any) : undefined,
+              stack: e.stack,
               cause: is.nullOrUndefined(e.cause)
                 ? undefined
                 : e.cause instanceof Error
@@ -307,6 +310,14 @@ export namespace TelemetryUtility {
               type: 'unknown',
               kind: 'unknown',
               message: String(err),
+              cause: err instanceof Error
+                ? {
+                    name: err.name,
+                    message: err.message,
+                    stack: err.stack,
+                    serialized: JSON.stringify(Inspectable.toJSON(lodash.omit(err, ['stack', 'message']))),
+                  }
+                : JSON.stringify(Inspectable.toJSON(err)),
             },
           })
         }),

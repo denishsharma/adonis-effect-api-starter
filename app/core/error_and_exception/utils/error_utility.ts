@@ -15,6 +15,30 @@ import { errors as vineErrors } from '@vinejs/vine'
 import { Match } from 'effect'
 
 export namespace ErrorUtility {
+  namespace internals {
+    /**
+     * Internal utility function to convert the given unknown error to a known exception.
+     * If the given error is not a known exception, it will return `undefined`.
+     *
+     * @param error The error to convert to a known exception.
+     */
+    export function convertToStrictKnownException(error: unknown) {
+      return Match.type<unknown>().pipe(
+        Match.when(isException(), err => err),
+        Match.when(
+          (err: unknown) => err instanceof appErrors.E_ROUTE_NOT_FOUND,
+          err => RouteNotFoundException.fromException(err),
+        ),
+        Match.when(
+          (err: unknown) => err instanceof vineErrors.E_VALIDATION_ERROR,
+          err => ValidationException.fromException(err),
+        ),
+        Match.orElse(() => undefined),
+      )(error)
+    }
+
+  }
+
   /**
    * Checks if the given value is an internal error.
    *
@@ -146,17 +170,28 @@ export namespace ErrorUtility {
    * @param options Additional options for the internal server exception.
    */
   export function toKnownException(error: unknown, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-    return Match.type<unknown>().pipe(
-      Match.when(isException(), err => err),
-      Match.when(
-        (err: unknown) => err instanceof appErrors.E_ROUTE_NOT_FOUND,
-        err => RouteNotFoundException.fromException(err),
-      ),
-      Match.when(
-        (err: unknown) => err instanceof vineErrors.E_VALIDATION_ERROR,
-        err => ValidationException.fromException(err),
-      ),
-      Match.orElse(() => toInternalServerException(error, message, options)),
-    )(error)
+    const exception = internals.convertToStrictKnownException(error)
+    if (is.nullOrUndefined(exception)) {
+      return toInternalServerException(error, message, options)
+    }
+    return exception
+  }
+
+  /**
+   * Converts the given unknown error to a known exception
+   * or throws the unknown error if it is not a known exception.
+   *
+   * Suitable for use in catch blocks to convert unknown errors
+   * to known exceptions or throw the unknown error which
+   * can be caught by the global error handler.
+   *
+   * @param error The error to convert to a known exception.
+   */
+  export function toKnownExceptionOrThrowUnknown(error: unknown) {
+    const exception = internals.convertToStrictKnownException(error)
+    if (is.nullOrUndefined(exception)) {
+      throw error
+    }
+    return exception
   }
 }
