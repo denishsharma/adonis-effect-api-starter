@@ -1,6 +1,7 @@
 import type { ExceptionCode } from '#constants/exception_constant'
 import type { TaggedInternalError } from '#core/error_and_exception/tagged_internal_error'
 import type { Exception } from '@adonisjs/core/exceptions'
+import type { Brand } from 'effect'
 import type { StatusCodes as HttpStatusCode } from 'http-status-codes'
 import type { Draft } from 'mutative'
 import type { Class } from 'type-fest'
@@ -368,7 +369,7 @@ export function TaggedException<T extends string>(tag: T) {
     ;(InternalError.prototype as any).name = resolvedTag
     ;(InternalError as any).__tag__ = resolvedTag
 
-    return InternalError as unknown as new (...args: TaggedExceptionConstructor<F>) => InstanceType<Class<InternalError>>
+    return InternalError as unknown as new (...args: TaggedExceptionConstructor<F>) => Brand.Branded<InstanceType<Class<InternalError>>, ErrorKind.EXCEPTION>
   }
 }
 
@@ -376,4 +377,4 @@ export function TaggedException<T extends string>(tag: T) {
  * Type guard to check if the error is an instance
  * of the tagged exception class.
  */
-export type TaggedException<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = BaseExceptionInstanceType<T, F>
+export type TaggedException<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = Brand.Branded<BaseExceptionInstanceType<T, F>, ErrorKind.EXCEPTION>

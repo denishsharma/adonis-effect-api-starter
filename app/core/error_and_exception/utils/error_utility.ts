@@ -130,6 +130,8 @@ export namespace ErrorUtility {
     }
   }
 
+  isException(InternalServerException)('')
+
   /**
    * Converts the given error to an internal server exception.
    *

@@ -1,5 +1,6 @@
 import type { InternalErrorCode } from '#constants/internal_error_constant'
 import type { Exception } from '@adonisjs/core/exceptions'
+import type { Brand } from 'effect'
 import type { Draft } from 'mutative'
 import type { Class } from 'type-fest'
 import { ErrorKind } from '#core/error_and_exception/constants/error_kind_constant'
@@ -341,7 +342,7 @@ export function TaggedInternalError<T extends string>(tag: T) {
     ;(InternalError.prototype as any).name = resolvedTag
     ;(InternalError as any).__tag__ = resolvedTag
 
-    return InternalError as unknown as new (...args: TaggedInternalErrorConstructor<F>) => InstanceType<Class<InternalError>>
+    return InternalError as unknown as new (...args: TaggedInternalErrorConstructor<F>) => Brand.Branded<InstanceType<Class<InternalError>>, ErrorKind.INTERNAL>
   }
 }
 
@@ -349,4 +350,4 @@ export function TaggedInternalError<T extends string>(tag: T) {
  * Type guard to check if the error is an instance
  * of the tagged internal error class.
  */
-export type TaggedInternalError<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = BaseInternalErrorInstanceType<T, F>
+export type TaggedInternalError<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = Brand.Branded<BaseInternalErrorInstanceType<T, F>, ErrorKind.INTERNAL>
