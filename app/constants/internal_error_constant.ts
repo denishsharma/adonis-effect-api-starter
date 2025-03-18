@@ -2,6 +2,7 @@ export enum InternalErrorCode {
   I_SCHEMA_PARSE_ERROR = 'I_SCHEMA_PARSE_ERROR',
   I_JSON_PARSE_ERROR = 'I_JSON_PARSE_ERROR',
   I_UNEXPECTED_RUNTIME_EXIT_RESULT_ERROR = 'I_UNEXPECTED_RUNTIME_EXIT_RESULT_ERROR',
+  I_DB_TRANSACTION_ERROR = 'I_DB_TRANSACTION_ERROR',
   I_UNKNOWN_ERROR = 'I_UNKNOWN_ERROR',
 }
 
@@ -27,6 +28,9 @@ export const InternalErrorCodeMetadata: Record<InternalErrorCode, InternalErrorC
   },
   [InternalErrorCode.I_UNEXPECTED_RUNTIME_EXIT_RESULT_ERROR]: {
     message: 'Unexpected runtime exit result returned from the application runtime and not able to be handled.',
+  },
+  [InternalErrorCode.I_DB_TRANSACTION_ERROR]: {
+    message: 'Unexpected error occurred while performing a database transaction.',
   },
   [InternalErrorCode.I_UNKNOWN_ERROR]: {
     message: 'An unknown error that was not expected occurred and not able to be handled.',
