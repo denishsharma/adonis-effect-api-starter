@@ -1,5 +1,6 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 import extensions from '#start/extensions'
+import { BaseModel, SnakeCaseNamingStrategy } from '@adonisjs/lucid/orm'
 
 export default class AppProvider {
   constructor(protected app: ApplicationService) {}
@@ -19,6 +20,12 @@ export default class AppProvider {
     for (const extension of extensions) {
       await extension()
     }
+
+    /**
+     * Set the naming strategy for the Lucid models
+     * to snake case
+     */
+    BaseModel.namingStrategy = new SnakeCaseNamingStrategy()
   }
 
   /**
