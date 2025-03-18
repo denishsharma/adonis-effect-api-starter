@@ -1,10 +1,12 @@
 import type { TaggedException, TaggedExceptionConstructor, TaggedExceptionOptions } from '#core/error_and_exception/tagged_exception'
-import type { TaggedInternalError, TaggedInternalErrorConstructor } from '#core/error_and_exception/tagged_internal_error'
+import type { TaggedInternalError, TaggedInternalErrorConstructor, TaggedInternalErrorOptions } from '#core/error_and_exception/tagged_internal_error'
 import type { Schema } from 'effect'
 import type { Class } from 'type-fest'
-import { InternalErrorCode, InternalErrorCodeMetadata } from '#constants/internal_error_constant'
+import { InternalErrorCode } from '#constants/internal_error_constant'
+import { ErrorKind } from '#core/error_and_exception/constants/error_kind_constant'
 import { EXCEPTION_MARKER } from '#core/error_and_exception/tagged_exception'
 import { INTERNAL_ERROR_MARKER } from '#core/error_and_exception/tagged_internal_error'
+import UnknownError from '#errors/unknown_error'
 import InternalServerException from '#exceptions/internal_server_exception'
 import RouteNotFoundException from '#exceptions/route_not_found_exception'
 import ValidationException from '#exceptions/validation_exception'
@@ -12,7 +14,8 @@ import { errors as appErrors } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
 import is from '@adonisjs/core/helpers/is'
 import { errors as vineErrors } from '@vinejs/vine'
-import { Match } from 'effect'
+import { defu } from 'defu'
+import { Inspectable, Match } from 'effect'
 
 export namespace ErrorUtility {
   namespace internals {
@@ -24,7 +27,7 @@ export namespace ErrorUtility {
      */
     export function convertToStrictKnownException(error: unknown) {
       return Match.type<unknown>().pipe(
-        Match.when(isException(), err => err),
+        Match.when(isException(), err => err as TaggedException<string, any>),
         Match.when(
           (err: unknown) => err instanceof appErrors.E_ROUTE_NOT_FOUND,
           err => RouteNotFoundException.fromException(err),
@@ -139,18 +142,90 @@ export namespace ErrorUtility {
    * If the given error is not an instance of `Error` or an internal error, it will
    * be converted to an instance of `Error` with the message of `InternalErrorCode.I_UNKNOWN_ERROR`.
    *
-   * @param error The error to convert to an internal server exception.
    * @param message The message of the internal server exception.
    * @param options Additional options for the internal server exception.
    */
-  export function toInternalServerException(error: unknown, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-    if (isInternalError()(error) || error instanceof Exception || error instanceof TypeError || error instanceof Error) {
-      return new InternalServerException(error, message, options)
-    }
+  export function toInternalServerException(message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
+    /**
+     * @param error The error to convert to an internal server exception.
+     */
+    return (error: unknown) =>
+      Match.value(error).pipe(
+        Match.whenOr(
+          (err: unknown) => isInternalError()(err),
+          (err: unknown) => err instanceof Exception,
+          (err: unknown) => err instanceof TypeError,
+          (err: unknown) => err instanceof Error,
+          err => new InternalServerException(err, message, options),
+        ),
+        Match.orElse(err => new InternalServerException(toInternalUnknownError()(err), message, options)),
+      )
+  }
 
-    return new InternalServerException(new Error(
-      'toString' in (error as any) ? (error as any).toString() : InternalErrorCodeMetadata[InternalErrorCode.I_UNKNOWN_ERROR].message,
-    ), message, options)
+  /**
+   * Converts the given unknown error to an internal unknown error.
+   *
+   * This function is useful when you want to convert an unknown error to an
+   * internal unknown error.
+   *
+   * It will try to match the given error to known exceptions and internal errors
+   * and convert it to the corresponding internal unknown error, but final type
+   * always will be `UnknownError`.
+   *
+   * @param message The message of the internal unknown error.
+   * @param options Additional options for the internal unknown error.
+   */
+  export function toInternalUnknownError(message?: string, options?: Omit<TaggedInternalErrorOptions, 'cause'> & { data?: Record<any, unknown> }) {
+    /**
+     * @param error The error to convert to an internal unknown error.
+     */
+    return (error: unknown) =>
+      Match.value(error).pipe(
+        Match.whenOr(
+          (err: unknown) => isInternalError()(err),
+          (err: unknown) => isException()(err),
+          err => new UnknownError(
+            message ?? err.message,
+            {
+              cause: err.cause ?? err,
+              data: options?.data ? Inspectable.toJSON(options.data) as Record<any, unknown> : defu(err.toJSON().data, err._kind === ErrorKind.EXCEPTION ? { __exception__: err.code } : {}),
+              code: options?.code ?? (err._kind === ErrorKind.INTERNAL ? err.code : InternalErrorCode.I_UNKNOWN_ERROR),
+              ...options,
+            },
+          ),
+        ),
+        Match.when(
+          (err: unknown) => err instanceof Exception,
+          err => new UnknownError(
+            message ?? err.message,
+            {
+              cause: (!is.nullOrUndefined(err.cause) && is.error(err.cause)) ? err.cause : err,
+              data: defu(options?.data ? Inspectable.toJSON(options.data) as Record<any, unknown> : {}, { __exception__: err.code }),
+              ...options,
+            },
+          ),
+        ),
+        Match.whenOr(
+          (err: unknown) => err instanceof TypeError,
+          (err: unknown) => err instanceof Error,
+          err => new UnknownError(
+            message ?? err.message,
+            {
+              cause: err,
+              data: options?.data ? Inspectable.toJSON(options.data) as Record<any, unknown> : 'data' in err ? err.data as Record<any, unknown> : undefined,
+              ...options,
+            },
+          ),
+        ),
+        Match.orElse(() => new UnknownError(
+          message,
+          {
+            cause: new Error(Inspectable.toStringUnknown(error)),
+            data: options?.data ? Inspectable.toJSON(options.data) as Record<any, unknown> : undefined,
+            ...options,
+          },
+        )),
+      )
   }
 
   /**
@@ -165,16 +240,20 @@ export namespace ErrorUtility {
    * If the given error is not a known exception, it will
    * be converted to an internal server exception.
    *
-   * @param error The error to convert to a known exception.
    * @param message The message for the internal server exception.
    * @param options Additional options for the internal server exception.
    */
-  export function toKnownException(error: unknown, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-    const exception = internals.convertToStrictKnownException(error)
-    if (is.nullOrUndefined(exception)) {
-      return toInternalServerException(error, message, options)
+  export function toKnownException(message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
+    /**
+     * @param error The error to convert to a known exception.
+     */
+    return (error: unknown) => {
+      const exception = internals.convertToStrictKnownException(error)
+      if (is.nullOrUndefined(exception)) {
+        return toInternalServerException(message, options)(error)
+      }
+      return exception
     }
-    return exception
   }
 
   /**
@@ -184,14 +263,17 @@ export namespace ErrorUtility {
    * Suitable for use in catch blocks to convert unknown errors
    * to known exceptions or throw the unknown error which
    * can be caught by the global error handler.
-   *
-   * @param error The error to convert to a known exception.
    */
-  export function toKnownExceptionOrThrowUnknown(error: unknown) {
-    const exception = internals.convertToStrictKnownException(error)
-    if (is.nullOrUndefined(exception)) {
-      throw error
+  export function toKnownExceptionOrThrowUnknown() {
+    /**
+     * @param error The error to convert to a known exception.
+     */
+    return (error: unknown) => {
+      const exception = internals.convertToStrictKnownException(error)
+      if (is.nullOrUndefined(exception)) {
+        throw error
+      }
+      return exception
     }
-    return exception
   }
 }

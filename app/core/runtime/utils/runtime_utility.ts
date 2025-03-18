@@ -61,7 +61,7 @@ export namespace RuntimeUtility {
       }
 
       if (Exit.isFailure(self) && Cause.isDieType(self.cause)) {
-        throw ErrorUtility.toInternalServerException(self.cause.defect)
+        throw ErrorUtility.toInternalServerException()(self.cause.defect)
       }
 
       if (Exit.isSuccess(self)) {
@@ -113,7 +113,7 @@ export namespace RuntimeUtility {
             })),
           ),
           Match.orElse(error => Effect.suspend(() => Effect.sync(() => {
-            const err = ErrorUtility.toKnownException(error)
+            const err = ErrorUtility.toKnownException()(error)
             logger.error(
               err.toJSON(),
               `[effectful] ${err.toString()}`,
@@ -127,13 +127,13 @@ export namespace RuntimeUtility {
        */
       Effect.catchIf(
         error => !ErrorUtility.isException()(error),
-        error => Effect.fail(ErrorUtility.toKnownException(error)),
+        error => Effect.fail(ErrorUtility.toKnownException()(error)),
       ),
       /**
        * Catch all defects and convert them to
        * known exceptions.
        */
-      Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toKnownException(defect))),
+      Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toKnownException()(defect))),
     )
   }
 

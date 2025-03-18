@@ -52,7 +52,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
          * Convert the error to a tagged exception,
          * and handle the exception based on its type.
          */
-        const exception = ErrorUtility.toKnownException(error) as TaggedException<any, any>
+        const exception = ErrorUtility.toKnownException()(error) as TaggedException<string, any>
 
         const makeResponseService = yield* MakeResponseService
         const exceptionResponse = yield* makeResponseService.exception(ctx)(exception)

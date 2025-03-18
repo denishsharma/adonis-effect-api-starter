@@ -52,12 +52,12 @@ export default class RuntimeMiddleware {
             if (is.promise(content) || is.asyncFunction(content)) {
               yield* Ref.set(effectful, Effect.tryPromise({
                 try: async () => is.asyncFunction(content) ? await content() : await content,
-                catch: error => ErrorUtility.toKnownException(error),
+                catch: ErrorUtility.toKnownException(),
               }))
             } else {
               yield* Ref.set(effectful, Effect.try({
                 try: () => content,
-                catch: error => ErrorUtility.toKnownException(error),
+                catch: ErrorUtility.toKnownException(),
               }))
             }
           }

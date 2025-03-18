@@ -251,15 +251,19 @@ export namespace TelemetryUtility {
               type: e._tag,
               kind: e._kind,
               message: e.message,
-              data: errorData,
+              data: errorData ? JSON.stringify(errorData, null, 2) : undefined,
               stack: e.stack,
               cause: is.nullOrUndefined(e.cause)
                 ? undefined
-                : {
-                    name: e.cause.name,
-                    message: e.cause.message,
-                    stack: e.cause.stack,
-                  },
+                : JSON.stringify(
+                    {
+                      name: e.cause.name,
+                      message: e.cause.message,
+                      stack: e.cause.stack,
+                    },
+                    null,
+                    2,
+                  ),
             },
           })
         }),
@@ -280,16 +284,20 @@ export namespace TelemetryUtility {
               type: e.code,
               kind: 'adonis_exception',
               message: e.message,
-              data: 'data' in e ? (e.data as any) : undefined,
+              data: 'data' in e ? is.object(e.data) ? JSON.stringify(e.data, null, 2) : (e.data as any) : undefined,
               stack: e.stack,
               cause: is.nullOrUndefined(e.cause)
                 ? undefined
                 : e.cause instanceof Error
-                  ? {
-                      name: e.cause.name,
-                      message: e.cause.message,
-                      stack: e.cause.stack,
-                    }
+                  ? JSON.stringify(
+                      {
+                        name: e.cause.name,
+                        message: e.cause.message,
+                        stack: e.cause.stack,
+                      },
+                      null,
+                      2,
+                    )
                   : undefined,
             },
           })
@@ -311,13 +319,17 @@ export namespace TelemetryUtility {
               kind: 'unknown',
               message: String(err),
               cause: err instanceof Error
-                ? {
-                    name: err.name,
-                    message: err.message,
-                    stack: err.stack,
-                    serialized: JSON.stringify(Inspectable.toJSON(lodash.omit(err, ['stack', 'message']))),
-                  }
-                : JSON.stringify(Inspectable.toJSON(err)),
+                ? JSON.stringify(
+                    {
+                      name: err.name,
+                      message: err.message,
+                      stack: err.stack,
+                      serialized: JSON.stringify(Inspectable.toJSON(lodash.omit(err, ['stack', 'message']))),
+                    },
+                    null,
+                    2,
+                  )
+                : JSON.stringify(Inspectable.toJSON(err), null, 2),
             },
           })
         }),

@@ -1,5 +1,4 @@
 import type { TaggedExceptionOptions } from '#core/error_and_exception/tagged_exception'
-import type { TaggedInternalError } from '#core/error_and_exception/tagged_internal_error'
 import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_constant'
 import { InternalErrorCode } from '#constants/internal_error_constant'
 import { TaggedException } from '#core/error_and_exception/tagged_exception'
@@ -21,7 +20,7 @@ import { StatusCodes } from 'http-status-codes'
  *
  * @category Exception
  */
-export default class InternalServerException<T extends string, F extends Schema.Struct.Fields | undefined = undefined> extends TaggedException('internal_server')({
+export default class InternalServerException extends TaggedException('internal_server')({
   status: StatusCodes.INTERNAL_SERVER_ERROR,
   code: ExceptionCode.E_INTERNAL_SERVER_ERROR,
   message: ExceptionCodeMetadata[ExceptionCode.E_INTERNAL_SERVER_ERROR].message,
@@ -42,7 +41,7 @@ export default class InternalServerException<T extends string, F extends Schema.
    * @param message The message to display.
    * @param options The options to customize the exception.
    */
-  constructor(error: Error | TaggedInternalError<T, F> | unknown, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
+  constructor(error: unknown, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
     super({ error: null }, message, options)
 
     /**

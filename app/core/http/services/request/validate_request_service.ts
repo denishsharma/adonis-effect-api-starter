@@ -40,7 +40,7 @@ export class ValidateRequestService extends Effect.Service<ValidateRequestServic
 
           return yield* Effect.tryPromise({
             try: async () => (await validator.validate(data, options as any)) as Infer<typeof validator>,
-            catch: error => ErrorUtility.toKnownException(error, 'Unknown error occurred while validating the request data.'),
+            catch: ErrorUtility.toKnownException('Unknown error occurred while validating the request data.'),
           }).pipe(TelemetryUtility.withTelemetrySpan('validate_request_with_vine'))
         })
     }
