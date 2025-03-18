@@ -3,6 +3,12 @@ import is from '@adonisjs/core/helpers/is'
 import logger from '@adonisjs/core/services/logger'
 import { Context, Effect, Option } from 'effect'
 
+/**
+ * Provides the current HTTP context to the current execution scope.
+ *
+ * This context is used to access the current HTTP request
+ * and response objects in the current scope of execution.
+ */
 export class CurrentHttpContext extends Context.Tag('@context/http/current_context')<CurrentHttpContext, {
   available: boolean
   request: Request

@@ -28,4 +28,12 @@ export default await Env.create(new URL('../', import.meta.url), {
     'debug',
     'trace',
   ]),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for OpenTelemetry Configuration
+  |----------------------------------------------------------
+  */
+  OTEL_APPLICATION_SERVICE_NAME: Env.schema.string(),
+  OTEL_APPLICATION_SERVICE_VERSION: Env.schema.string(),
 })

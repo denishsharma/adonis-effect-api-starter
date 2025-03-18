@@ -2,9 +2,11 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { ManagedRuntime, Scope } from 'effect'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
 import { CurrentHttpContext } from '#core/http/contexts/current_http_context'
+import { ApplicationRuntime } from '#core/runtime/runtime'
+import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
 import UnexpectedRuntimeExitResultError from '#errors/unexpected_runtime_exit_result_error'
+
 import InternalServerException from '#exceptions/internal_server_exception'
-import { ApplicationRuntime } from '#start/runtime'
 import logger from '@adonisjs/core/services/logger'
 import { Cause, Effect, Exit, Function, Match, Option, Ref } from 'effect'
 
@@ -37,16 +39,8 @@ export namespace RuntimeUtility {
    * This provides only a type-level guarantee that the effect has
    * all of its dependencies resolved. It does not provide a runtime
    * guarantee that the effect has all of its dependencies resolved.
-   *
-   * @param self The effect to ensure that all of its dependencies are resolved
    */
-  export const ensureDependencies: {
-    <A, E>(): (self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-    <A, E>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
-  } = Function.dual(
-    args => Effect.isEffect(args[0]),
-    (self: Effect.Effect<unknown, unknown, R>): Effect.Effect<unknown, unknown, R> => self,
-  )
+  export const ensureDependencies = () => <A, E, RD extends R | never>(self: Effect.Effect<A, E, RD>): Effect.Effect<A, E, RD> => self
 
   /**
    * Handles the runtime exit result and returns the value if the exit result
@@ -87,8 +81,8 @@ export namespace RuntimeUtility {
    * It also logs any errors that occur during the processing
    * of the content.
    */
-  export const managed = Effect.fn(function* <A, E>(self: Effect.Effect<A, E, R>) {
-    return yield* self.pipe(
+  export function managed<A, E>(self: Effect.Effect<A, E, R>) {
+    return self.pipe(
       Effect.scoped,
       /**
        * Tap into the effectful program to log any
@@ -106,6 +100,7 @@ export namespace RuntimeUtility {
         )
 
         const fail = (yield* causeRef.get) as Cause.Fail<unknown>
+        yield* TelemetryUtility.logError(fail.error, ['all'], 'managed_effect_runtime')
 
         yield* Match.value(fail.error).pipe(
           Match.when(
@@ -118,7 +113,7 @@ export namespace RuntimeUtility {
             })),
           ),
           Match.orElse(error => Effect.suspend(() => Effect.sync(() => {
-            const err = ErrorUtility.toInternalServerException(error)
+            const err = ErrorUtility.toKnownException(error)
             logger.error(
               err.toJSON(),
               `[effectful] ${err.toString()}`,
@@ -128,7 +123,7 @@ export namespace RuntimeUtility {
       })),
       /**
        * Catch all non-exception errors and convert
-       * them to internal server exceptions.
+       * them to known exceptions.
        */
       Effect.catchIf(
         error => !ErrorUtility.isException()(error),
@@ -136,11 +131,11 @@ export namespace RuntimeUtility {
       ),
       /**
        * Catch all defects and convert them to
-       * internal server exceptions.
+       * known exceptions.
        */
       Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toKnownException(defect))),
     )
-  })
+  }
 
   /**
    * Options to run the effectful program in the application runtime.

@@ -1,8 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
+import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
-import { HttpResponseService } from '#core/http/services/response_service'
-import { RuntimeUtility } from '#utils/runtime_utility'
+import { SuccessResponse } from '#core/http/schemas/success_response_schema'
+import { MakeResponseService } from '#core/http/services/response/make_response_service'
+import { RuntimeUtility } from '#core/runtime/utils/runtime_utility'
+import { SchemaUtility } from '#core/schema/utils/schema_utility'
+import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
+import { EffectUtility } from '#utils/effect_utility'
 import is from '@adonisjs/core/helpers/is'
 import { Effect, Either, Ref, Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
@@ -25,14 +30,14 @@ export default class RuntimeMiddleware {
       const content = ctx.response.content![0]
 
       const program = Effect.gen(function* () {
-        const responseService = yield* HttpResponseService
+        const makeResponseService = yield* MakeResponseService
 
         /**
-         * Wrap the content in an effectful program
-         * to handle the response content.
+         * Extract the effectful program from the content
+         * to be processed.
          */
-        return yield* Effect.gen(function* () {
-          const effectful = yield* Ref.make<Effect.Effect<unknown, unknown, never>>(content)
+        const effectProgram = yield* Effect.gen(function* () {
+          const effectful = yield* Ref.make<Effect.Effect<unknown, unknown, unknown>>(content)
 
           /**
            * Check if the content is an effect, if so
@@ -42,73 +47,71 @@ export default class RuntimeMiddleware {
            * program to be processed.
            */
           if (Effect.isEffect(content)) {
-            yield* Ref.set(effectful, content as Effect.Effect<unknown, unknown, never>)
+            yield* Ref.set(effectful, content)
           } else {
-            yield* Ref.set(effectful, Effect.suspend(() => Effect.gen(function* () {
-            /**
-             * Check if the content is a promise, if so
-             * wrap the promise in an effectful program
-             */
-              if (is.promise(content)) {
-                return yield* Effect.promise(async () => await content)
-              }
+            if (is.promise(content) || is.asyncFunction(content)) {
+              yield* Ref.set(effectful, Effect.tryPromise({
+                try: async () => is.asyncFunction(content) ? await content() : await content,
+                catch: error => ErrorUtility.toKnownException(error),
+              }))
+            } else {
+              yield* Ref.set(effectful, Effect.try({
+                try: () => content,
+                catch: error => ErrorUtility.toKnownException(error),
+              }))
+            }
+          }
 
-              /**
-               * Return the content as is if it is not
-               * a promise.
-               */
-              return content
-            })))
+          return yield* effectful.get
+        }).pipe(
+          TelemetryUtility.withTelemetrySpan('extract_effect'),
+        )
+
+        const effectResult = yield* effectProgram.pipe(
+          TelemetryUtility.withTelemetrySpan('execute_effect'),
+        )
+
+        return yield* Effect.gen(function* () {
+          /**
+           * Check if the content is an exception response
+           * to be sent as a response.
+           *
+           * If so, set the response status to the exception
+           * response status and return the exception response
+           * as the response content without processing it.
+           */
+          const exceptionResponse = Schema.decodeUnknownEither(ExceptionResponse)(effectResult)
+          if (Either.isRight(exceptionResponse)) {
+            ctx.response.status(exceptionResponse.right.status)
+            return effectResult
           }
 
           /**
-           * Get the content from the effectful reference
-           * to be processed.
+           * If the client accepts JSON, make a success
+           * response from the content to be sent as a
+           * response.
            */
-          return yield* (yield* effectful.get)
-        }).pipe(
+          if (accepts === 'json') {
+            const successResponse = yield* makeResponseService.success(ctx)(effectResult)
+            ctx.response.status(successResponse.status)
+            return yield* Effect.suspend(() =>
+              Schema.encode(SuccessResponse, { errors: 'all' })(successResponse).pipe(
+                SchemaUtility.toSchemaParseError('Unexpected error while encoding success response.', successResponse),
+              ),
+            ).pipe(TelemetryUtility.withTelemetrySpan('encode_success_response'))
+          }
+
           /**
-           * Make a success response from the content
-           * to be sent as a response.
+           * If the client does not accept JSON, return
+           * the content as is without processing it.
+           *
+           * This is useful for returning binary data
+           * such as images, videos, etc.
            */
-          Effect.flatMap(data => Effect.gen(function* () {
-            /**
-             * Check if the content is an exception response
-             * to be sent as a response.
-             *
-             * If so, set the response status to the exception
-             * response status and return the exception response
-             * as the response content without processing it.
-             */
-            const exceptionResponse = Schema.decodeUnknownEither(ExceptionResponse)(data)
-            if (Either.isRight(exceptionResponse)) {
-              ctx.response.status(exceptionResponse.right.status)
-              return data
-            }
-
-            /**
-             * If the client accepts JSON, make a success
-             * response from the content to be sent as a
-             * response.
-             */
-            if (accepts === 'json') {
-              const response = yield* responseService.make.success(ctx)(data)
-              ctx.response.status(response.status)
-              return response
-            }
-
-            /**
-             * If the client does not accept JSON, return
-             * the content as is without processing it.
-             *
-             * This is useful for returning binary data
-             * such as images, videos, etc.
-             */
-            ctx.response.status(StatusCodes.OK)
-            return data
-          })),
-        )
-      })
+          ctx.response.status(StatusCodes.OK)
+          return effectResult
+        }).pipe(TelemetryUtility.withTelemetrySpan('process_client_response'))
+      }).pipe(EffectUtility.withContextType<any>())
 
       /**
        * Run the program to process the response content
@@ -116,6 +119,7 @@ export default class RuntimeMiddleware {
        */
       const response = await program.pipe(
         RuntimeUtility.ensureDependencies(),
+        TelemetryUtility.withScopedTelemetry('runtime_middleware'),
         RuntimeUtility.run({ ctx }),
       )
 

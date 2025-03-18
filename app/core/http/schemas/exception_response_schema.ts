@@ -4,6 +4,9 @@ import { DefaultResponseMetadataDetails } from '#core/http/schemas/response_meta
 import { Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
 
+/**
+ * Schema to represent a standard exception response structure.
+ */
 export class ExceptionResponse extends Schema.Class<ExceptionResponse>('@schema/http/exception_response')({
   type: Schema.Literal(ResponseType.EXCEPTION),
   status: Schema.Enums(StatusCodes),

@@ -6,8 +6,10 @@ import { defu } from 'defu'
 import { Effect } from 'effect'
 import * as lodash from 'lodash-es'
 
-export class ResposneContextService extends Effect.Service<ResposneContextService>()('@service/http/response_context', {
-  accessors: true,
+/**
+ * Service to interact with the response context in Effect scope.
+ */
+export class ResposneContextService extends Effect.Service<ResposneContextService>()('@service/http/response/context', {
   effect: Effect.gen(function* () {
     function annotateMetadata(data: Record<string, unknown>) {
       return Effect.gen(function* () {

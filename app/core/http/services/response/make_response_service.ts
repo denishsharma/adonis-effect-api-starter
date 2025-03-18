@@ -6,12 +6,17 @@ import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
 import { SuccessResponse } from '#core/http/schemas/success_response_schema'
 import { ResposneContextService } from '#core/http/services/response/response_context_service'
 import { HttpUtility } from '#core/http/utils/http_utility'
+import { RuntimeUtility } from '#core/runtime/utils/runtime_utility'
 import { SchemaUtility } from '#core/schema/utils/schema_utility'
+import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
 import { defu } from 'defu'
 import { Effect, Match, Option, Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
 
-export class MakeResponseService extends Effect.Service<MakeResponseService>()('@service/http/make_response', {
+/**
+ * Service to create a success or exception response
+ */
+export class MakeResponseService extends Effect.Service<MakeResponseService>()('@service/http/response/make', {
   dependencies: [ResposneContextService.Default],
   effect: Effect.gen(function* () {
     const context = yield* ResposneContextService
@@ -58,11 +63,11 @@ export class MakeResponseService extends Effect.Service<MakeResponseService>()('
      * @param options The options to be used for creating the success response.
      */
     function success(ctx: HttpContext, options?: MakeSuccessResponseOptions) {
-      return Effect.fn(
-        /**
-         * @param self The content to be sent as a response.
-         */
-        function* (self: unknown) {
+      /**
+       * @param self The content to be sent as a response.
+       */
+      return (self: unknown) =>
+        Effect.gen(function* () {
           const metadata = yield* context.metadata()
           const dataMode = yield* context.dataMode()
           const message = yield* context.message()
@@ -74,7 +79,7 @@ export class MakeResponseService extends Effect.Service<MakeResponseService>()('
             metadata,
           })
 
-          return yield* Effect.suspend(() => Effect.gen(function* () {
+          return yield* Effect.gen(function* () {
             const response = {
               type: ResponseType.SUCCESS as const,
               status: resolvedOptions.status,
@@ -87,33 +92,37 @@ export class MakeResponseService extends Effect.Service<MakeResponseService>()('
               } satisfies Schema.Schema.Encoded<typeof SuccessResponse.fields.metadata>, resolvedOptions.metadata),
             } satisfies Schema.Schema.Encoded<typeof SuccessResponse>
 
-            yield* Match.value(resolvedOptions.dataMode).pipe(
-              Match.when(ResponseDataMode.PAGINATED, () => Schema.decodeUnknown(Schema.extend(
-                SuccessResponse.fields.metadata,
-                Schema.Struct({
-                  pagination: Schema.Struct({}),
-                }),
-              ), { errors: 'all' })(response.metadata)),
-              Match.orElse(() => Schema.decodeUnknown(Schema.Object, { errors: 'all' })(response.metadata)),
-            ).pipe(
-              SchemaUtility.toSchemaParseError('Unexpected error while validating success response metadata', response.metadata),
-            )
+            yield* Effect.suspend(() =>
+              Match.value(resolvedOptions.dataMode).pipe(
+                Match.when(ResponseDataMode.PAGINATED, () => Schema.decodeUnknown(Schema.extend(
+                  SuccessResponse.fields.metadata,
+                  Schema.Struct({
+                    pagination: Schema.Struct({}),
+                  }),
+                ), { errors: 'all' })(response.metadata)),
+                Match.orElse(() => Schema.decodeUnknown(Schema.Object, { errors: 'all' })(response.metadata)),
+              ).pipe(SchemaUtility.toSchemaParseError('Unexpected error while validating success response metadata', response.metadata)),
+            ).pipe(TelemetryUtility.withTelemetrySpan('validate_metadata'))
 
-            yield* Match.value(resolvedOptions.dataMode).pipe(
-              Match.when(ResponseDataMode.SINGLE, () => Schema.decodeUnknown(Schema.Object, { errors: 'all' })(response.data)),
-              Match.when(ResponseDataMode.NONE, () => Schema.decodeUnknown(Schema.NullishOr(Schema.Never), { errors: 'all' })(response.data)),
-              Match.when(_ => _ === ResponseDataMode.PAGINATED || _ === ResponseDataMode.LIST, () => Schema.decodeUnknown(Schema.Array(Schema.Unknown), { errors: 'all' })(response.data)),
-              Match.orElse(() => Schema.decodeUnknown(Schema.Unknown, { errors: 'all' })(response.data)),
-            ).pipe(
-              SchemaUtility.toSchemaParseError('Unexpected error while validating data mode with success response data', { dataMode: resolvedOptions.dataMode }),
-            )
+            yield* Effect.suspend(() =>
+              Match.value(resolvedOptions.dataMode).pipe(
+                Match.when(ResponseDataMode.SINGLE, () => Schema.decodeUnknown(Schema.Object, { errors: 'all' })(response.data)),
+                Match.when(ResponseDataMode.NONE, () => Schema.decodeUnknown(Schema.NullishOr(Schema.Never), { errors: 'all' })(response.data)),
+                Match.when(_ => _ === ResponseDataMode.PAGINATED || _ === ResponseDataMode.LIST, () => Schema.decodeUnknown(Schema.Array(Schema.Unknown), { errors: 'all' })(response.data)),
+                Match.orElse(() => Schema.decodeUnknown(Schema.Unknown, { errors: 'all' })(response.data)),
+              ).pipe(SchemaUtility.toSchemaParseError('Unexpected error while validating data mode with success response data', { dataMode: resolvedOptions.dataMode })),
+            ).pipe(TelemetryUtility.withTelemetrySpan('validate_data_mode'))
 
-            return yield* Schema.decode(SuccessResponse, { errors: 'all' })(response).pipe(
-              SchemaUtility.toSchemaParseError('Unexpected error while decoding success response', response),
-            )
-          }))
-        },
-      )
+            return yield* Effect.suspend(() =>
+              Schema.decode(SuccessResponse, { errors: 'all' })(response).pipe(
+                SchemaUtility.toSchemaParseError('Unexpected error while decoding success response', response),
+              ),
+            ).pipe(TelemetryUtility.withTelemetrySpan('decode_success_response'))
+          })
+        }).pipe(
+          TelemetryUtility.withTelemetrySpan('make_success_response'),
+          RuntimeUtility.ensureDependencies(),
+        )
     }
 
     /**
@@ -149,11 +158,11 @@ export class MakeResponseService extends Effect.Service<MakeResponseService>()('
      * @param options The options to be used for creating the exception response.
      */
     function exception(ctx: HttpContext, options?: MakeExceptionResponseOptions) {
-      return Effect.fn(
-        /**
-         * @param self The exception to be sent as a response.
-         */
-        function* <T extends string, F extends Schema.Struct.Fields | undefined = undefined>(self: TaggedException<T, F>) {
+      /**
+       * @param self The exception to be sent as a response.
+       */
+      return <T extends string, F extends Schema.Struct.Fields | undefined = undefined>(self: TaggedException<T, F>) =>
+        Effect.gen(function* () {
           const metadata = yield* context.metadata()
 
           const resolvedOptions = defu(options, {
@@ -162,7 +171,7 @@ export class MakeResponseService extends Effect.Service<MakeResponseService>()('
             metadata,
           })
 
-          return yield* Effect.suspend(() => Effect.gen(function* () {
+          return yield* Effect.gen(function* () {
             const response = {
               type: ResponseType.EXCEPTION as const,
               status: resolvedOptions.status,
@@ -178,12 +187,16 @@ export class MakeResponseService extends Effect.Service<MakeResponseService>()('
               } satisfies Schema.Schema.Encoded<typeof ExceptionResponse.fields.metadata>, resolvedOptions.metadata),
             } satisfies Schema.Schema.Encoded<typeof ExceptionResponse>
 
-            return yield* Schema.decode(ExceptionResponse, { errors: 'all' })(response).pipe(
-              SchemaUtility.toSchemaParseError('Unexpected error while decoding exception response', response),
+            return yield* Effect.suspend(() =>
+              Schema.decode(ExceptionResponse, { errors: 'all' })(response).pipe(
+                SchemaUtility.toSchemaParseError('Unexpected error while decoding exception response', response),
+              ),
             )
-          }))
-        },
-      )
+          }).pipe(TelemetryUtility.withTelemetrySpan('decode_exception_response'))
+        }).pipe(
+          TelemetryUtility.withTelemetrySpan('make_exception_response'),
+          RuntimeUtility.ensureDependencies(),
+        )
     }
 
     return {
