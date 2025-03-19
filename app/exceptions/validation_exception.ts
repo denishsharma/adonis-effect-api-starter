@@ -1,8 +1,9 @@
 import type { TaggedExceptionOptions } from '#core/error_and_exception/tagged_exception'
-import type { errors } from '@vinejs/vine'
 import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_constant'
 import { TaggedException } from '#core/error_and_exception/tagged_exception'
-import { Schema } from 'effect'
+import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { errors } from '@vinejs/vine'
+import { Match, Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
 
 /**
@@ -48,5 +49,26 @@ export default class ValidationException extends TaggedException('validation')({
           cause: exception,
         },
       )
+  }
+
+  /**
+   * Convert an error to a `ValidationException` or an unknown error.
+   *
+   * @param message The message for the validation exception and unknown error
+   * @param options The options for the validation exception
+   */
+  static toValidationExceptionOrUnknownError(message?: { validation?: string, unknown?: string }, options?: Omit<TaggedExceptionOptions, 'cause'>) {
+    /**
+     * @param error The error to convert
+     */
+    return (error: unknown) => {
+      return Match.value(error).pipe(
+        Match.when(
+          Match.instanceOf(errors.E_VALIDATION_ERROR),
+          ValidationException.fromException(message?.validation, options),
+        ),
+        Match.orElse(ErrorUtility.toInternalUnknownError(message?.unknown ?? 'Unknown error occurred while validating the data.')),
+      )
+    }
   }
 }
