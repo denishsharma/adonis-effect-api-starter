@@ -13,7 +13,12 @@ export class CurrentHttpContext extends Context.Tag('@context/http/current_conte
   available: boolean
   request: Request
   response: Response
+  raw: HttpContext
   withContext: <A, E, R>(self: (ctx: HttpContext) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  withContextOr: <A1, E1, R1, A2, E2, R2>(
+    self: (ctx: HttpContext) => Effect.Effect<A1, E1, R1>,
+    or: () => Effect.Effect<A2, E2, R2>,
+  ) => Effect.Effect<A1 | A2, E1 | E2, R1 | R2>
 }>() {
   /**
    * Provide the current HTTP context to the current execution scope.
@@ -42,11 +47,23 @@ export class CurrentHttpContext extends Context.Tag('@context/http/current_conte
         )
       }
 
+      function withContextOr<A1, E1, R1, A2, E2, R2>(
+        self: (ctx: HttpContext) => Effect.Effect<A1, E1, R1>,
+        or: () => Effect.Effect<A2, E2, R2>,
+      ) {
+        return Effect.if(available, {
+          onTrue: () => withContext(self),
+          onFalse: or,
+        })
+      }
+
       return {
         available,
         request: available ? ctx.request : (undefined as unknown as Request),
         response: available ? ctx.response : (undefined as unknown as Response),
+        raw: available ? ctx : (undefined as unknown as HttpContext),
         withContext,
+        withContextOr,
       }
     })())
   }

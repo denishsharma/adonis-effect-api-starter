@@ -16,7 +16,7 @@ import router from '@adonisjs/core/services/router'
 import vine from '@vinejs/vine'
 import { Effect, Schema } from 'effect'
 
-router.get('/', async (ctx) => {
+router.get('/', async () => {
   return Effect.gen(function* () {
     const responseContextService = yield* ResposneContextService
     const validateRequestService = yield* ValidateRequestService
@@ -30,7 +30,7 @@ router.get('/', async (ctx) => {
             }),
           }),
         ),
-      )(ctx)
+      )
       .pipe(
         Effect.flatMap(data =>
           Effect.suspend(() =>

@@ -1,8 +1,8 @@
-import type { HttpContext } from '@adonisjs/core/http'
 import type { RequestValidationOptions } from '@adonisjs/core/types/http'
 import type { VineValidator } from '@vinejs/vine'
 import type { Infer, SchemaTypes } from '@vinejs/vine/types'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { CurrentHttpContext } from '#core/http/contexts/current_http_context'
 import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
 import { Effect } from 'effect'
 
@@ -17,32 +17,36 @@ export class ValidateRequestService extends Effect.Service<ValidateRequestServic
         ? [options?: RequestValidationOptions<M> | undefined]
         : [options: RequestValidationOptions<M>]
     ) {
-      return (self: HttpContext) =>
-        Effect.gen(function* () {
-          /**
-           * Merge the request body, params, cookies, headers and query string into a single object.
-           * This object will be used to validate the request using the VineJS validator.
-           *
-           * The object will have the following properties along with request body:
-           * - __params: The request params.
-           * - __cookies: The request cookies.
-           * - __headers: The request headers.
-           * - __qs: The query string.
-           */
-          const data = {
-            ...self.request.all(),
-            ...self.request.allFiles(),
-            __params: self.request.params() ?? {},
-            __cookies: self.request.cookiesList() ?? {},
-            __headers: self.request.headers() ?? {},
-            __qs: self.request.qs() ?? {},
-          }
+      return Effect.gen(function* () {
+        const { withContextOr } = yield* CurrentHttpContext
 
-          return yield* Effect.tryPromise({
-            try: async () => (await validator.validate(data, options as any)) as Infer<typeof validator>,
-            catch: ErrorUtility.toKnownException('Unknown error occurred while validating the request data.'),
-          }).pipe(TelemetryUtility.withTelemetrySpan('validate_request_with_vine'))
-        })
+        /**
+         * Merge the request body, params, cookies, headers and query string into a single object.
+         * This object will be used to validate the request using the VineJS validator.
+         *
+         * The object will have the following properties along with request body:
+         * - __params: The request params.
+         * - __cookies: The request cookies.
+         * - __headers: The request headers.
+         * - __qs: The query string.
+         */
+        const data = yield* withContextOr(
+          ctx => Effect.succeed({
+            ...ctx.request.all(),
+            ...ctx.request.allFiles(),
+            __params: ctx.request.params() ?? {},
+            __cookies: ctx.request.cookiesList() ?? {},
+            __headers: ctx.request.headers() ?? {},
+            __qs: ctx.request.qs() ?? {},
+          }),
+          () => Effect.succeed({}),
+        ).pipe(TelemetryUtility.withTelemetrySpan('merge_request_data'))
+
+        return yield* Effect.tryPromise({
+          try: async () => (await validator.validate(data, options as any)) as Infer<typeof validator>,
+          catch: ErrorUtility.toKnownException('Unknown error occurred while validating the request data.'),
+        }).pipe(TelemetryUtility.withTelemetrySpan('validate_request_with_vine'))
+      })
     }
 
     return {
