@@ -67,6 +67,8 @@ export default antfu(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'warn',
 
+      'jsdoc/check-param-names': 'off',
+
       'node/handle-callback-err': ['error', '^(err|error)$'],
       'node/prefer-global/process': ['error', 'always'],
 
