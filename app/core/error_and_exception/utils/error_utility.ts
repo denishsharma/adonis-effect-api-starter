@@ -270,4 +270,30 @@ export namespace ErrorUtility {
       return exception
     }
   }
+
+  /**
+   * Extracts the cause of the given unknown error.
+   * If the given error is not a valid error, it will return `undefined`.
+   *
+   * @param error The error to extract the cause from.
+   */
+  export function fromUnknownErrorToCause(error: unknown) {
+    return Match.value(error).pipe(
+      Match.whenOr(
+        isInternalError<string, any>(),
+        isException<string, any>(),
+        err => err.cause ?? err,
+      ),
+      Match.when(
+        Match.instanceOf(Exception),
+        err => err.cause ? (is.error(err.cause) ? err.cause : err) : err,
+      ),
+      Match.whenOr(
+        Match.instanceOf(TypeError),
+        Match.instanceOf(Error),
+        err => err.cause ? (is.error(err.cause) ? err.cause : err) : err,
+      ),
+      Match.orElse(() => undefined),
+    )
+  }
 }
