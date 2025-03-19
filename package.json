@@ -64,7 +64,8 @@
     "luxon": "^3.5.0",
     "mutative": "^1.1.0",
     "mysql2": "^3.13.0",
-    "reflect-metadata": "^0.2.2"
+    "reflect-metadata": "^0.2.2",
+    "ulidx": "^2.4.1"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^7.8.2",

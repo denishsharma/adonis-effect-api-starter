@@ -1,6 +1,6 @@
 import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_constant'
 import { TaggedException } from '#core/error_and_exception/tagged_exception'
-import { StringSchemaDataType } from '#core/schema/data_types/string_schema_data_type'
+import { SchemaDataType } from '#core/schema/schema_data_type'
 import { Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
 
@@ -18,7 +18,7 @@ export default class ResourceNotFoundException extends TaggedException('resource
   code: ExceptionCode.E_RESOURCE_NOT_FOUND,
   message: ExceptionCodeMetadata[ExceptionCode.E_RESOURCE_NOT_FOUND].message,
   schema: Schema.Struct({
-    resource: Schema.compose(StringSchemaDataType.SnakeCase, Schema.Lowercase).pipe(
+    resource: Schema.compose(SchemaDataType.String.SnakeCase, Schema.Lowercase).pipe(
       Schema.annotations({
         description: 'The resource that was not found.',
       }),
