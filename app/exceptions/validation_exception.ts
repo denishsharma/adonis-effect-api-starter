@@ -32,18 +32,21 @@ export default class ValidationException extends TaggedException('validation')({
    * Create instance of `ValidationException` from
    * an `E_VALIDATION_ERROR` error by parsing the validation issues.
    *
-   * @param exception The exception to create the instance from
    * @param message The message of the exception
    * @param options The options of the exception
    */
-  static fromException(exception: InstanceType<typeof errors.E_VALIDATION_ERROR>, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-    return new ValidationException(
-      { issues: exception.messages },
-      message,
-      {
-        ...options,
-        cause: exception,
-      },
-    )
+  static fromException(message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
+    /**
+     * @param exception The exception to create the instance from
+     */
+    return (exception: InstanceType<typeof errors.E_VALIDATION_ERROR>) =>
+      new ValidationException(
+        { issues: exception.messages },
+        message,
+        {
+          ...options,
+          cause: exception,
+        },
+      )
   }
 }

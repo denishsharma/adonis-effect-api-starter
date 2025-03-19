@@ -159,4 +159,18 @@ export default class InternalServerException extends TaggedException('internal_s
       }),
     )()
   }
+
+  /**
+   * Create instance of `InternalServerException` from
+   * an unknown error by parsing the error.
+   *
+   * @param message The message of the exception
+   * @param options The options of the exception
+   */
+  static fromUnknownError(message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
+    /**
+     * @param error The error to create the instance from
+     */
+    return (error: unknown) => new InternalServerException(error, message, options)
+  }
 }

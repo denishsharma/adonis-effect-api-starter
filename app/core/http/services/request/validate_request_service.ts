@@ -4,7 +4,9 @@ import type { Infer, SchemaTypes } from '@vinejs/vine/types'
 import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
 import { CurrentHttpContext } from '#core/http/contexts/current_http_context'
 import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
-import { Effect } from 'effect'
+import ValidationException from '#exceptions/validation_exception'
+import { errors as vineErrors } from '@vinejs/vine'
+import { Effect, Match } from 'effect'
 
 /**
  * Service to validate the request for the current HTTP context.
@@ -43,8 +45,14 @@ export class ValidateRequestService extends Effect.Service<ValidateRequestServic
         ).pipe(TelemetryUtility.withTelemetrySpan('merge_request_data'))
 
         return yield* Effect.tryPromise({
-          try: async () => (await validator.validate(data, options as any)) as Infer<typeof validator>,
-          catch: ErrorUtility.toKnownException('Unknown error occurred while validating the request data.'),
+          try: async () => (await validator.validate(data, options as any)) as Infer<S>,
+          catch: Match.type().pipe(
+            Match.when(
+              (error: unknown) => error instanceof vineErrors.E_VALIDATION_ERROR,
+              ValidationException.fromException(),
+            ),
+            Match.orElse(ErrorUtility.toInternalUnknownError('Unknown error occurred while validating the request data.')),
+          ),
         }).pipe(TelemetryUtility.withTelemetrySpan('validate_request_with_vine'))
       })
     }

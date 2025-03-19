@@ -1,6 +1,6 @@
 import type { IsolationLevels } from '@adonisjs/lucid/types/database'
+import DatabaseTransactionError from '#core/db/errors/database_transaction_error'
 import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
-import DatabaseTransactionError from '#errors/database_transaction_error'
 import db from '@adonisjs/lucid/services/db'
 import { Effect, Exit } from 'effect'
 

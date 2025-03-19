@@ -44,4 +44,18 @@ export default class SchemaParseError extends TaggedInternalError('schema_parse'
       issue: ParseResult.ArrayFormatter.formatIssueSync(this.issue),
     }
   }
+
+  /**
+   * Create a new instance of the error from a parse error.
+   *
+   * @param data The data to include in the error
+   * @param message The message to display
+   * @param options The options to customize the error
+   */
+  static fromParseError(data?: unknown, message?: string, options?: TaggedInternalErrorOptions) {
+    /**
+     * @param error Parse error to create the instance from
+     */
+    return (error: ParseResult.ParseError) => new SchemaParseError(error.issue, data, message, options)
+  }
 }

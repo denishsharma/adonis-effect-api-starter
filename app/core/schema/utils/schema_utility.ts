@@ -1,6 +1,5 @@
 import type { ParseResult } from 'effect'
 import SchemaParseError from '#errors/schema_parse_error'
-import is from '@adonisjs/core/helpers/is'
 import { Effect, Function } from 'effect'
 
 export namespace SchemaUtility {
@@ -31,19 +30,11 @@ export namespace SchemaUtility {
    *
    * @param self The effect to convert to a schema parse error
    */
-  export const toSchemaParseError: {
-    <A, R>(message?: ((error: ParseResult.ParseError) => string) | string, data?: unknown): (self: Effect.Effect<A, ParseResult.ParseError, R>) => Effect.Effect<A, SchemaParseError, R>
-    <A, R>(self: Effect.Effect<A, ParseResult.ParseError, R>, message?: ((error: ParseResult.ParseError) => string) | string, data?: unknown): Effect.Effect<A, SchemaParseError, R>
-  } = Function.dual(
-    args => Effect.isEffect(args[2]),
-    (self: Effect.Effect<unknown, ParseResult.ParseError, unknown>, message?: ((error: ParseResult.ParseError) => string) | string, data?: unknown): Effect.Effect<unknown, SchemaParseError, unknown> => {
+  export function toSchemaParseError(message?: string, data?: unknown) {
+    return <A, R>(self: Effect.Effect<A, ParseResult.ParseError, R>) => {
       return self.pipe(
-        Effect.catchTag('ParseError', error => new SchemaParseError(
-          error.issue,
-          data,
-          is.string(message) ? message : is.function(message) ? message(error) : undefined,
-        )),
+        Effect.catchTag('ParseError', SchemaParseError.fromParseError(data, message)),
       )
-    },
-  )
+    }
+  }
 }

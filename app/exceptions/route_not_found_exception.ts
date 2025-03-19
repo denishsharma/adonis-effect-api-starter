@@ -26,22 +26,26 @@ export default class RouteNotFoundException extends TaggedException('route_not_f
    * Create instance of `RouteNotFoundException` from
    * an `E_ROUTE_NOT_FOUND` error by parsing the method and URL.
    *
-   * @param exception The exception to create the instance from
    * @param message The message of the exception
    * @param options The options of the exception
    */
-  static fromException(exception: InstanceType<typeof errors.E_ROUTE_NOT_FOUND>, message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-    const pattern = /^Cannot\s+(\S[^:]*):(\S[^:]*)$/
-    const matches = pattern.exec(exception.message)
-    const [method, url] = matches ? matches.slice(1).map(str => str.trim()) : ['unknown', 'unknown']
+  static fromException(message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
+    /**
+     * @param exception The exception to create the instance from
+     */
+    return (exception: InstanceType<typeof errors.E_ROUTE_NOT_FOUND>) => {
+      const pattern = /^Cannot\s+(\S[^:]*):(\S[^:]*)$/
+      const matches = pattern.exec(exception.message)
+      const [method, url] = matches ? matches.slice(1).map(str => str.trim()) : ['unknown', 'unknown']
 
-    return new RouteNotFoundException(
-      { method, url },
-      message ?? exception.message,
-      {
-        ...options,
-        cause: exception,
-      },
-    )
+      return new RouteNotFoundException(
+        { method, url },
+        message ?? exception.message,
+        {
+          ...options,
+          cause: exception,
+        },
+      )
+    }
   }
 }

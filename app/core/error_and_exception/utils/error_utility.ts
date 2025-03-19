@@ -15,7 +15,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import is from '@adonisjs/core/helpers/is'
 import { errors as vineErrors } from '@vinejs/vine'
 import { defu } from 'defu'
-import { Inspectable, Match } from 'effect'
+import { flow, Inspectable, Match } from 'effect'
 
 export namespace ErrorUtility {
   namespace internals {
@@ -27,15 +27,9 @@ export namespace ErrorUtility {
      */
     export function convertToStrictKnownException(error: unknown) {
       return Match.type<unknown>().pipe(
-        Match.when(isException(), err => err as TaggedException<string, any>),
-        Match.when(
-          (err: unknown) => err instanceof appErrors.E_ROUTE_NOT_FOUND,
-          err => RouteNotFoundException.fromException(err),
-        ),
-        Match.when(
-          (err: unknown) => err instanceof vineErrors.E_VALIDATION_ERROR,
-          err => ValidationException.fromException(err),
-        ),
+        Match.when(isException<string, any>(), err => err),
+        Match.when(Match.instanceOf(appErrors.E_ROUTE_NOT_FOUND), RouteNotFoundException.fromException()),
+        Match.when(Match.instanceOf(vineErrors.E_VALIDATION_ERROR), ValidationException.fromException()),
         Match.orElse(() => undefined),
       )(error)
     }
@@ -130,8 +124,6 @@ export namespace ErrorUtility {
     }
   }
 
-  isException(InternalServerException)('')
-
   /**
    * Converts the given error to an internal server exception.
    *
@@ -154,13 +146,13 @@ export namespace ErrorUtility {
     return (error: unknown) =>
       Match.value(error).pipe(
         Match.whenOr(
-          (err: unknown) => isInternalError()(err),
-          (err: unknown) => err instanceof Exception,
-          (err: unknown) => err instanceof TypeError,
-          (err: unknown) => err instanceof Error,
-          err => new InternalServerException(err, message, options),
+          isInternalError<string, any>(),
+          Match.instanceOf(Exception),
+          Match.instanceOf(TypeError),
+          Match.instanceOf(Error),
+          InternalServerException.fromUnknownError(message, options),
         ),
-        Match.orElse(err => new InternalServerException(toInternalUnknownError()(err), message, options)),
+        Match.orElse(flow(toInternalUnknownError(), InternalServerException.fromUnknownError(message, options))),
       )
   }
 
@@ -184,8 +176,8 @@ export namespace ErrorUtility {
     return (error: unknown) =>
       Match.value(error).pipe(
         Match.whenOr(
-          (err: unknown) => isInternalError()(err),
-          (err: unknown) => isException()(err),
+          isInternalError<string, any>(),
+          isException<string, any>(),
           err => new UnknownError(
             message ?? err.message,
             {
@@ -197,7 +189,7 @@ export namespace ErrorUtility {
           ),
         ),
         Match.when(
-          (err: unknown) => err instanceof Exception,
+          Match.instanceOf(Exception),
           err => new UnknownError(
             message ?? err.message,
             {
@@ -208,8 +200,8 @@ export namespace ErrorUtility {
           ),
         ),
         Match.whenOr(
-          (err: unknown) => err instanceof TypeError,
-          (err: unknown) => err instanceof Error,
+          Match.instanceOf(TypeError),
+          Match.instanceOf(Error),
           err => new UnknownError(
             message ?? err.message,
             {
