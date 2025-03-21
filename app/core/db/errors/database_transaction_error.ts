@@ -1,7 +1,7 @@
-import type { TaggedInternalErrorOptions } from '#core/error_and_exception/tagged_internal_error'
+import type { TaggedInternalErrorOptions } from '#core/error/tagged_internal_error'
 import { InternalErrorCode, InternalErrorCodeMetadata } from '#constants/internal_error_constant'
-import { TaggedInternalError } from '#core/error_and_exception/tagged_internal_error'
-import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { TaggedInternalError } from '#core/error/tagged_internal_error'
+import { ErrorUtility } from '#core/error/utils/error_utility'
 import { Schema } from 'effect'
 
 /**

@@ -1,8 +1,8 @@
-import type { TaggedExceptionOptions } from '#core/error_and_exception/tagged_exception'
+import type { TaggedExceptionOptions } from '#core/error/tagged_exception'
 import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_constant'
 import { InternalErrorCode } from '#constants/internal_error_constant'
-import { TaggedException } from '#core/error_and_exception/tagged_exception'
-import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { TaggedException } from '#core/error/tagged_exception'
+import { ErrorUtility } from '#core/error/utils/error_utility'
 import { SchemaUtility } from '#core/schema/utils/schema_utility'
 import { Exception } from '@adonisjs/core/exceptions'
 import is from '@adonisjs/core/helpers/is'
@@ -50,7 +50,7 @@ export default class InternalServerException extends TaggedException('internal_s
      */
     Match.value(error).pipe(
       Match.when(
-        ErrorUtility.isInternalError(),
+        ErrorUtility.isTaggedInternalError<string, any>(),
         err => () => {
           const cause = err.cause ?? err
 

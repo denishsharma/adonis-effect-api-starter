@@ -1,7 +1,7 @@
-import type { TaggedExceptionOptions } from '#core/error_and_exception/tagged_exception'
+import type { TaggedExceptionOptions } from '#core/error/tagged_exception'
 import type { errors } from '@adonisjs/core'
 import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_constant'
-import { TaggedException } from '#core/error_and_exception/tagged_exception'
+import { TaggedException } from '#core/error/tagged_exception'
 import { Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
 

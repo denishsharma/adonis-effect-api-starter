@@ -1,8 +1,8 @@
-import type { TaggedException } from '#core/error_and_exception/tagged_exception'
-import type { TaggedInternalError } from '#core/error_and_exception/tagged_internal_error'
+import type { TaggedException } from '#core/error/tagged_exception'
+import type { TaggedInternalError } from '#core/error/tagged_internal_error'
 import type { SpanOptions } from 'effect/Tracer'
-import { ErrorKind } from '#core/error_and_exception/constants/error_kind_constant'
-import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { ErrorKind } from '#core/error/constants/error_kind_constant'
+import { ErrorUtility } from '#core/error/utils/error_utility'
 import env from '#start/env'
 import { Exception } from '@adonisjs/core/exceptions'
 import is from '@adonisjs/core/helpers/is'
@@ -230,8 +230,8 @@ export namespace TelemetryUtility {
 
     return Match.value(error).pipe(
       Match.whenOr(
-        (err: unknown) => ErrorUtility.isInternalError()(err) && (log.includes('internal_error') || log.includes('all')),
-        (err: unknown) => ErrorUtility.isException()(err) && (log.includes('known_exception') || log.includes('all')),
+        (err: unknown) => ErrorUtility.isTaggedInternalError()(err) && (log.includes('internal_error') || log.includes('all')),
+        (err: unknown) => ErrorUtility.isTaggedException()(err) && (log.includes('known_exception') || log.includes('all')),
         err => Effect.gen(function* () {
           const clock = yield* Effect.clock
           const e = err as TaggedException<any, any> | TaggedInternalError<any, any>
@@ -304,7 +304,7 @@ export namespace TelemetryUtility {
         }),
       ),
       Match.when(
-        (err: unknown) => (log.includes('unknown') || log.includes('all')) && (!ErrorUtility.isInternalError()(err) && !ErrorUtility.isException()(err) && !(err instanceof Exception)),
+        (err: unknown) => (log.includes('unknown') || log.includes('all')) && (!ErrorUtility.isTaggedInternalError()(err) && !ErrorUtility.isTaggedException()(err) && !(err instanceof Exception)),
         err => Effect.gen(function* () {
           const clock = yield* Effect.clock
 

@@ -1,7 +1,7 @@
-import type { TaggedException } from '#core/error_and_exception/tagged_exception'
+import type { TaggedException } from '#core/error/tagged_exception'
 import type { HttpContext } from '@adonisjs/core/http'
 import { ExceptionCode } from '#constants/exception_constant'
-import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { ErrorUtility } from '#core/error/utils/error_utility'
 import { ResponseType } from '#core/http/constants/response_type_constant'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
 import { MakeResponseService } from '#core/http/services/response/make_response_service'
@@ -52,7 +52,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
          * Convert the error to a tagged exception,
          * and handle the exception based on its type.
          */
-        const exception = ErrorUtility.toKnownException()(error) as TaggedException<string, any>
+        const exception = ErrorUtility.toException()(error) as TaggedException<string, any>
 
         const makeResponseService = yield* MakeResponseService
         const exceptionResponse = yield* makeResponseService.exception(ctx)(exception)

@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { ErrorUtility } from '#core/error/utils/error_utility'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
 import { SuccessResponse } from '#core/http/schemas/success_response_schema'
 import { MakeResponseService } from '#core/http/services/response/make_response_service'
@@ -52,12 +52,12 @@ export default class RuntimeMiddleware {
             if (is.promise(content) || is.asyncFunction(content)) {
               yield* Ref.set(effectful, Effect.tryPromise({
                 try: async () => is.asyncFunction(content) ? await content() : await content,
-                catch: ErrorUtility.toKnownException(),
+                catch: ErrorUtility.toException(),
               }))
             } else {
               yield* Ref.set(effectful, Effect.try({
                 try: () => content,
-                catch: ErrorUtility.toKnownException(),
+                catch: ErrorUtility.toException(),
               }))
             }
           }

@@ -1,7 +1,7 @@
 import type UnknownError from '#errors/unknown_error'
 import type { LucidModel, ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import type { Brand } from 'effect'
-import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { ErrorUtility } from '#core/error/utils/error_utility'
 import { defu } from 'defu'
 import { Cause, Effect } from 'effect'
 

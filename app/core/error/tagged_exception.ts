@@ -1,86 +1,92 @@
-import type { InternalErrorCode } from '#constants/internal_error_constant'
+import type { ExceptionCode } from '#constants/exception_constant'
+import type { TaggedInternalError } from '#core/error/tagged_internal_error'
 import type { Exception } from '@adonisjs/core/exceptions'
 import type { Brand } from 'effect'
+import type { StatusCodes as HttpStatusCode } from 'http-status-codes'
 import type { Draft } from 'mutative'
 import type { Class } from 'type-fest'
-import { ErrorKind } from '#core/error_and_exception/constants/error_kind_constant'
-import { SchemaUtility } from '#core/schema/utils/schema_utility'
+import { ErrorKind } from '#core/error/constants/error_kind_constant'
+import { EXCEPTION_MARKER } from '#core/error/constants/error_marker_constant'
 import is from '@adonisjs/core/helpers/is'
 import { defu } from 'defu'
 import { Data, Effect, Match, Option, Schema } from 'effect'
 import { create } from 'mutative'
 
 /**
- * Unique symbol to mark the error as an internal error.
- *
- * This is used to identify the error as an internal error
- * and is used for type checking and filtering.
- */
-export const INTERNAL_ERROR_MARKER: unique symbol = Symbol('@error/internal')
-
-/**
  * Default options to be used when creating
- * an internal error instance.
+ * a new exception instance.
  */
-interface DefaultInternalErrorOptions {
+interface DefaultExceptionOptions {
   /**
-   * Unique application-wide error code for
-   * this internal error.
+   * The HTTP status code to be used when
+   * sending the response.
    */
-  code: InternalErrorCode
+  status: HttpStatusCode
+
+  /**
+   * Unique application-wide exception code
+   * to identify the exception.
+   */
+  code: ExceptionCode
 
   /**
    * A human-readable message that describes
-   * the error in detail and is suitable for
-   * logging.
+   * the exception in detail and can be used
+   * for debugging purposes.
    */
   message: string
 }
 
 /**
- * Options that can be passed to the internal
- * error constructor.
+ * Options that can be passed to exception
+ * constructor.
  *
  * This can be used to customize the specific
- * behavior of the internal error instance.
+ * behavior of the exception instance.
  */
-export interface TaggedInternalErrorOptions {
+export interface TaggedExceptionOptions {
   /**
-   * Unique application-wide error code for
-   * this internal error.
+   * The HTTP status code to be used when
+   * sending the response.
    */
-  code?: InternalErrorCode
+  status?: HttpStatusCode
 
   /**
-   * The original error that caused this error
-   * to be thrown, if available.
+   * Unique application-wide exception code
+   * to identify the exception.
+   */
+  code?: ExceptionCode
+
+  /**
+   * The original error that caused this exception.
+   *
+   * This can be used to provide more context about
+   * the exception.
    */
   cause?: Error | TaggedInternalError<any, any> | Exception
 }
-
 /**
- * Constructor arguments for the internal error instance.
+ * Constructor arguments for the exception instance.
  *
  * If the first argument is an object, then it is the data
- * context that is attached to the error and rest of the
- * arguments are message and options.
+ * context that is attached to the exception and rest of the
+ * arguments are the message and options.
  *
- * If the first argument is not an object, then it is the
- * message and rest of the arguments are options.
+ * If the first argument is a string, then it is the message
+ * and rest of the arguments are the options.
  */
-export type TaggedInternalErrorConstructor<F extends Schema.Struct.Fields | undefined = undefined> = F extends undefined
-  ? [message?: string, options?: TaggedInternalErrorOptions]
-  : [data: Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>>, message?: string, options?: TaggedInternalErrorOptions]
+export type TaggedExceptionConstructor<F extends Schema.Struct.Fields | undefined = undefined> = F extends undefined
+  ? [message?: string, options?: TaggedExceptionOptions]
+  : [data: Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>>, message?: string, options?: TaggedExceptionOptions]
 
 /**
- * Internal function to create a base internal error
- * class that can be extended to create custom internal
- * error classes.
+ * Internal function to create a base exception class
+ * that can be extended to create custom exceptions.
  *
- * @param tag Unique tag for this internal error.
+ * @param tag Unique tag for this exception.
  * @param schema The schema that additional data context must adhere to.
  */
-function baseInternalError<
+function baseException<
   T extends string,
   F extends Schema.Struct.Fields | undefined = undefined,
 >(
@@ -88,24 +94,34 @@ function baseInternalError<
   schema?: Schema.Struct<Exclude<F, undefined>> & Schema.Schema<Schema.Schema.Type<Schema.Struct<Exclude<F, undefined>>>, Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>>, never>,
 ) {
   class Base extends Data.Error {
-    static readonly [INTERNAL_ERROR_MARKER] = INTERNAL_ERROR_MARKER
+    static get [EXCEPTION_MARKER]() {
+      return EXCEPTION_MARKER
+    }
 
     /**
-     * Unique application-wide error code for
-     * this internal error.
+     * The HTTP status code to be used when
+     * sending the response.
      */
-    readonly code: InternalErrorCode
+    readonly status: HttpStatusCode
+
+    /**
+     * Unique application-wide exception code
+     * to identify the exception.
+     */
+    readonly code: ExceptionCode
 
     /**
      * A human-readable message that describes
-     * the error in detail and is suitable for
-     * logging.
+     * the exception in detail and can be used
+     * for debugging purposes.
      */
     readonly message: string
 
     /**
-     * The original error that caused this error
-     * to be thrown.
+     * The original error that caused this exception.
+     *
+     * This can be used to provide more context about
+     * the exception.
      */
     readonly cause?: Error | TaggedInternalError<any, any> | Exception
 
@@ -115,18 +131,18 @@ function baseInternalError<
      * the error will be thrown.
      *
      * It is used to validate the additional data
-     * context that can be attached to the error.
+     * context that can be attached to the exception.
      */
     readonly schema?: Schema.Struct<Exclude<F, undefined>> & Schema.Schema<Schema.Schema.Type<Schema.Struct<Exclude<F, undefined>>>, Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>>, never>
 
     /**
      * Additional data context that can be attached
-     * to the error.
+     * to the exception.
      */
     private _data: Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>> | undefined
 
     /**
-     * Unique tag for this internal error.
+     * Unique tag for this exception.
      * This is used to identify the error type
      * and is used for debugging purposes.
      *
@@ -139,17 +155,17 @@ function baseInternalError<
     /**
      * Represents the category of error.
      */
-    readonly _kind: ErrorKind.INTERNAL = ErrorKind.INTERNAL
+    readonly _kind: ErrorKind.EXCEPTION = ErrorKind.EXCEPTION
 
-    constructor(defaults: DefaultInternalErrorOptions, ...args: TaggedInternalErrorConstructor<F>) {
+    constructor(defaults: DefaultExceptionOptions, ...args: TaggedExceptionConstructor<F>) {
       super()
 
       /**
-       * Set the schema for the error instance.
+       * Set the schema for the exception instance.
        *
        * This is used to validate the additional
        * data context that can be attached to the
-       * error.
+       * exception.
        */
       this.schema = schema
 
@@ -159,14 +175,14 @@ function baseInternalError<
        */
       const [
         messageOrData,
-        messageorOptions,
+        messageOrOptions,
         options,
       ] = args
 
       /**
        * If the first argument is an object, then
        * it is the data context that is attached to
-       * the error.
+       * the exception.
        */
       if (is.object(messageOrData)) {
         this._data = messageOrData as Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>>
@@ -175,41 +191,43 @@ function baseInternalError<
       }
 
       /**
-       * Default options for the error
+       * Default options for the exception.
        * constructor argument if not provided.
        */
       const defaultOptions = {
+        status: defaults.status,
         code: defaults.code,
         cause: undefined,
       }
 
       /**
        * Resolve the arguments to determine the
-       * message and options for the error based
+       * message and options for the exception based
        * on the first argument type.
        */
       const resolvedArguments = Match.value(!is.nullOrUndefined(this._data)).pipe(
-        Match.withReturnType<{ message: string, options: TaggedInternalErrorOptions }>(),
+        Match.withReturnType<{ message: string, options: TaggedExceptionOptions }>(),
         Match.when(true, () => ({
-          message: (messageorOptions ?? defaults.message) as string,
+          message: (messageOrOptions ?? defaults.message) as string,
           options: defu(options, defaultOptions),
         })),
         Match.orElse(() => ({
           message: (messageOrData ?? defaults.message) as string,
-          options: defu((messageorOptions ?? {}) as TaggedInternalErrorOptions, defaultOptions),
+          options: defu((messageOrOptions ?? {}) as TaggedExceptionOptions, defaultOptions),
         })),
       )
 
       /**
-       * Set the error code, message, and cause
+       * Set the status, exception code, message, and cause
        * based on the resolved arguments.
        */
+      this.status = resolvedArguments.options.status
       this.code = resolvedArguments.options.code
       this.message = resolvedArguments.message
       this.cause = resolvedArguments.options.cause
 
       /**
-       * Capture the stack trace for the error instance.
+       * Capture the stack trace for the exception instance.
        */
       Error.captureStackTrace(this, Object.getPrototypeOf(this).constructor)
     }
@@ -219,23 +237,24 @@ function baseInternalError<
     }
 
     /**
-     * When the error is converted to a string,
-     * it should return the error tag, code, and
+     * When the exception is converted to a string,
+     * it should return the exception tag, code, and
      * message.
      */
     toString(): string {
-      return `<${this._tag}> [${this.code}]: ${this.message}`
+      return `<${this._tag}> ${this.status} [${this.code}]: ${this.message}`
     }
 
     /**
-     * When the error is converted to JSON,
-     * it should return the error tag, code,
+     * When the exception is converted to JSON,
+     * it should return the exception tag, code,
      * message, cause, and data.
      */
     toJSON() {
       return {
         _tag: this._tag,
         _kind: this._kind,
+        status: this.status,
         code: this.code,
         message: this.message,
         cause: is.error(this.cause)
@@ -255,9 +274,7 @@ function baseInternalError<
                 }
 
                 const schemaToEncode = this.schema
-                return yield* Effect.suspend(() => Schema.encode(schemaToEncode)(data.value).pipe(
-                  SchemaUtility.toSchemaParseError('Unexpected error while encoding error data context.', data.value),
-                ))
+                return yield* Effect.suspend(() => Schema.encode(schemaToEncode)(data.value))
               }).pipe(Effect.runSync)
         ) as F extends undefined ? undefined : Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>>,
         stack: this.stack,
@@ -266,7 +283,7 @@ function baseInternalError<
 
     /**
      * Get the decoded data context that is
-     * attached to the error.
+     * attached to the exception.
      *
      * It will return validated and transformed
      * data context based on the schema.
@@ -277,16 +294,14 @@ function baseInternalError<
           return Option.none()
         }
 
-        const decoded = yield* Schema.decode(this.schema, { errors: 'all' })(this._data).pipe(
-          SchemaUtility.toSchemaParseError('Unexpected error while decoding error data context.', this._data),
-        )
+        const decoded = yield* Schema.decode(this.schema, { errors: 'all' })(this._data)
         return Option.some(decoded)
       })
     }
 
     /**
      * Update the data context that is attached
-     * to the error.
+     * to the exception.
      *
      * It will update the data context based on
      * the updater function provided.
@@ -307,34 +322,35 @@ function baseInternalError<
 }
 
 /**
- * Instance type of the base internal error class.
+ * Instance type of the base exception class.
  *
- * This is used to infer the instance type of the internal
- * error class that is created using the tagged internal error class.
+ * This is used to infer the instance type of the exception class
+ * that is created using the tagged exception class.
  */
-type BaseInternalErrorInstanceType<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = InstanceType<ReturnType<typeof baseInternalError<T, F>>>
+type BaseExceptionInstanceType<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = InstanceType<ReturnType<typeof baseException<T, F>>>
 
 /**
- * Create a tagged internal error class that can be extended
- * to create custom internal error classes.
+ * Create a tagged exception class that can be extended
+ * to create custom exceptions.
  *
- * Tag is extended with `@error/internal/` prefix to ensure
+ * Tag is extended with `@error/exception/` prefix to ensure
  * that the tag is unique and can be used for type checking
  * and filtering.
  *
- * @param tag Unique tag for this internal error class.
+ * @param tag Unique tag for this exception class.
+ * @returns A new class extending the base exception with the given tag.
  */
-export function TaggedInternalError<T extends string>(tag: T) {
-  type Tag = `@error/internal/${T}`
-  const resolvedTag: Tag = `@error/internal/${tag}` as Tag
+export function TaggedException<T extends string>(tag: T) {
+  type Tag = `@error/exception/${T}`
+  const resolvedTag: Tag = `@error/exception/${tag}` as Tag
 
   return <F extends Schema.Struct.Fields | undefined = undefined>(
-    defaults: DefaultInternalErrorOptions & {
+    defaults: DefaultExceptionOptions & {
       schema?: Schema.Struct<Exclude<F, undefined>> & Schema.Schema<Schema.Schema.Type<Schema.Struct<Exclude<F, undefined>>>, Schema.Schema.Encoded<Schema.Struct<Exclude<F, undefined>>>, never>
     },
   ) => {
-    class InternalError extends baseInternalError<Tag, F>(resolvedTag, defaults.schema) {
-      constructor(...args: TaggedInternalErrorConstructor<F>) {
+    class InternalError extends baseException<Tag, F>(resolvedTag, defaults.schema) {
+      constructor(...args: TaggedExceptionConstructor<F>) {
         const { schema, ...rest } = defaults
         super(rest, ...args)
       }
@@ -342,12 +358,28 @@ export function TaggedInternalError<T extends string>(tag: T) {
     ;(InternalError.prototype as any).name = resolvedTag
     ;(InternalError as any).__tag__ = resolvedTag
 
-    return InternalError as unknown as new (...args: TaggedInternalErrorConstructor<F>) => Brand.Branded<InstanceType<Class<InternalError>>, ErrorKind.INTERNAL>
+    return InternalError as unknown as new (...args: TaggedExceptionConstructor<F>) => Brand.Branded<InstanceType<Class<InternalError>>, ErrorKind.EXCEPTION>
   }
 }
 
 /**
- * Type guard to check if the error is an instance
- * of the tagged internal error class.
+ * Represents the type for a tagged exception instance.
+ *
+ * This type is used to accept a `TaggedException`
+ * as an instance type rather than a class type.
+ *
+ * @template T - The unique tag for the exception.
+ * @template F - The schema fields for the additional data context.
  */
-export type TaggedInternalError<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = Brand.Branded<BaseInternalErrorInstanceType<T, F>, ErrorKind.INTERNAL>
+export type TaggedException<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = Brand.Branded<BaseExceptionInstanceType<T, F>, ErrorKind.EXCEPTION>
+
+/**
+ * Represents the type for a tagged exception class.
+ *
+ * This type is used to accept a `TaggedException`
+ * as a class type rather than an instance type.
+ *
+ * @template T - The unique tag for the exception.
+ * @template F - The schema fields for the additional data context.
+ */
+export type ITaggedException<T extends string, F extends Schema.Struct.Fields | undefined = undefined> = Class<TaggedException<T, F>>

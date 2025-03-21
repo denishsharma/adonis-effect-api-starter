@@ -1,5 +1,5 @@
 import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_constant'
-import { TaggedException } from '#core/error_and_exception/tagged_exception'
+import { TaggedException } from '#core/error/tagged_exception'
 import { SchemaDataType } from '#core/schema/schema_data_type'
 import { Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'

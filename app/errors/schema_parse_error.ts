@@ -1,6 +1,6 @@
-import type { TaggedInternalErrorOptions } from '#core/error_and_exception/tagged_internal_error'
+import type { TaggedInternalErrorOptions } from '#core/error/tagged_internal_error'
 import { InternalErrorCode, InternalErrorCodeMetadata } from '#constants/internal_error_constant'
-import { TaggedInternalError } from '#core/error_and_exception/tagged_internal_error'
+import { TaggedInternalError } from '#core/error/tagged_internal_error'
 import { ParseResult, Schema } from 'effect'
 
 /**

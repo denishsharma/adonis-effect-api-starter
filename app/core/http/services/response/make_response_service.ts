@@ -1,4 +1,4 @@
-import type { TaggedException } from '#core/error_and_exception/tagged_exception'
+import type { TaggedException } from '#core/error/tagged_exception'
 import type { HttpContext } from '@adonisjs/core/http'
 import { ResponseDataMode } from '#core/http/constants/response_data_mode_constant'
 import { ResponseType } from '#core/http/constants/response_type_constant'

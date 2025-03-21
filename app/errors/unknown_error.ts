@@ -1,6 +1,6 @@
-import type { TaggedInternalErrorOptions } from '#core/error_and_exception/tagged_internal_error'
+import type { TaggedInternalErrorOptions } from '#core/error/tagged_internal_error'
 import { InternalErrorCode, InternalErrorCodeMetadata } from '#constants/internal_error_constant'
-import { TaggedInternalError } from '#core/error_and_exception/tagged_internal_error'
+import { TaggedInternalError } from '#core/error/tagged_internal_error'
 import { SchemaUtility } from '#core/schema/utils/schema_utility'
 import is from '@adonisjs/core/helpers/is'
 import { Effect, Option, Schema } from 'effect'

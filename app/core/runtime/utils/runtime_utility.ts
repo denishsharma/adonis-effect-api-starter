@@ -1,11 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { ManagedRuntime, Scope } from 'effect'
-import { ErrorUtility } from '#core/error_and_exception/utils/error_utility'
+import { ErrorUtility } from '#core/error/utils/error_utility'
 import { CurrentHttpContext } from '#core/http/contexts/current_http_context'
 import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
 import UnexpectedRuntimeExitResultError from '#errors/unexpected_runtime_exit_result_error'
-import InternalServerException from '#exceptions/internal_server_exception'
 
+import InternalServerException from '#exceptions/internal_server_exception'
 import { ApplicationRuntime } from '#start/runtime'
 import logger from '@adonisjs/core/services/logger'
 import { Cause, Effect, Exit, Function, Match, Option, Ref } from 'effect'
@@ -103,22 +103,25 @@ export namespace RuntimeUtility {
         yield* TelemetryUtility.logError(fail.error, ['all'], 'managed_effect_runtime')
 
         yield* Match.value(fail.error).pipe(
-          Match.when(
-            (error: unknown) => ErrorUtility.isInternalError()(error) || ErrorUtility.isException()(error),
-            error => Effect.suspend(() => Effect.sync(() => {
+          Match.whenOr(
+            ErrorUtility.isTaggedInternalError<string, any>(),
+            ErrorUtility.isTaggedException<string, any>(),
+            error => Effect.sync(() => {
               logger.error(
                 error.toJSON(),
                 `[effectful] ${error.toString()}`,
               )
-            })),
+            }),
           ),
-          Match.orElse(error => Effect.suspend(() => Effect.sync(() => {
-            const err = ErrorUtility.toKnownException()(error)
-            logger.error(
-              err.toJSON(),
-              `[effectful] ${err.toString()}`,
-            )
-          }))),
+          Match.orElse(
+            Effect.fn(function* (error: unknown) {
+              const err = ErrorUtility.toException()(error)
+              logger.error(
+                err.toJSON(),
+                `[effectful] ${err.toString()}`,
+              )
+            }),
+          ),
         )
       })),
       /**
@@ -126,14 +129,14 @@ export namespace RuntimeUtility {
        * them to known exceptions.
        */
       Effect.catchIf(
-        error => !ErrorUtility.isException()(error),
-        error => Effect.fail(ErrorUtility.toKnownException()(error)),
+        error => !ErrorUtility.isTaggedException()(error),
+        error => Effect.fail(ErrorUtility.toException()(error)),
       ),
       /**
        * Catch all defects and convert them to
        * known exceptions.
        */
-      Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toKnownException()(defect))),
+      Effect.catchAllDefect(defect => Effect.fail(ErrorUtility.toException()(defect))),
     )
   }
 

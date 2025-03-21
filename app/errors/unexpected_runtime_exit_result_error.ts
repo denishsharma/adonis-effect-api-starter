@@ -1,5 +1,5 @@
 import { InternalErrorCode, InternalErrorCodeMetadata } from '#constants/internal_error_constant'
-import { TaggedInternalError } from '#core/error_and_exception/tagged_internal_error'
+import { TaggedInternalError } from '#core/error/tagged_internal_error'
 import { Schema } from 'effect'
 
 /**
