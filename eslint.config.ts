@@ -1,5 +1,6 @@
 import adonisjs from '@adonisjs/eslint-plugin'
 import antfu from '@antfu/eslint-config'
+import local from './.tooling/eslint/plugin.js'
 
 export default antfu(
   {
@@ -19,6 +20,7 @@ export default antfu(
         ],
         'style/max-statements-per-line': ['error', { max: 2 }],
         'style/wrap-regex': 'error',
+        'style/member-delimiter-style': 'error',
       },
     },
     regexp: { level: 'warn' },
@@ -60,6 +62,7 @@ export default antfu(
     lessOpinionated: true,
     plugins: {
       adonisjs,
+      local,
     },
     rules: {
       'antfu/no-top-level-await': 'off',
@@ -68,6 +71,8 @@ export default antfu(
       'no-debugger': 'warn',
 
       'jsdoc/check-param-names': 'off',
+
+      'import/no-cycle': ['error', { maxDepth: '∞' }],
 
       'node/handle-callback-err': ['error', '^(err|error)$'],
       'node/prefer-global/process': ['error', 'always'],
@@ -78,6 +83,9 @@ export default antfu(
       'unicorn/throw-new-error': 'off',
       'unicorn/filename-case': ['error', { case: 'snakeCase' }],
       'unicorn/no-await-expression-member': 'error',
+
+      'local/no-internals-outside-module': 'error',
+      'local/no-utils-import-inside-same-module': 'error',
     },
   },
   {
