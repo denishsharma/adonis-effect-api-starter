@@ -59,7 +59,7 @@ export default class TelemetryMiddleware {
        * Match the response content type and set the span
        * attributes and status based on the response type
        */
-      Match.type<{ content: boolean, stream: boolean, fileStream: boolean }>().pipe(
+      Match.type<{ content: boolean; stream: boolean; fileStream: boolean }>().pipe(
         Match.when(
           ({ content }) => content,
           () => () => {

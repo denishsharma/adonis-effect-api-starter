@@ -8,7 +8,7 @@ export interface ErrorKindMetadata {
    * Describes what the error kind is
    * and what it is used for.
    */
-  description: string
+  description: string;
 
   /**
    * Whether the error kind is critical.
@@ -17,7 +17,7 @@ export interface ErrorKindMetadata {
    * considered to be critical and should
    * be handled with care.
    */
-  critical?: boolean
+  critical?: boolean;
 }
 
 export const ErrorKindMetadata: Record<ErrorKind, ErrorKindMetadata> = {
