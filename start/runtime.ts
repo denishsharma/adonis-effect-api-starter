@@ -9,13 +9,11 @@
 |
 */
 
-import { HttpUtility } from '#core/http/utils/http_utility'
-import { LucidUtility } from '#core/lucid/utils/lucid_utility'
+import HttpModule from '#core/http/http_module'
 import { Layer, ManagedRuntime } from 'effect'
 
 export const ApplicationRuntimeDependenciesLayer = Layer.mergeAll(
-  HttpUtility.Module.layer(),
-  LucidUtility.Module.layer(),
+  HttpModule.provide(),
 )
 
 export const ApplicationRuntime = ManagedRuntime.make(ApplicationRuntimeDependenciesLayer)

@@ -16,7 +16,7 @@ export interface ResponseTypeMetadata {
   /**
    * A human-readable message describing the structured response type.
    */
-  message: string
+  message: string;
 }
 
 /**

@@ -4,6 +4,7 @@ export enum InternalErrorCode {
   I_UNEXPECTED_RUNTIME_EXIT_RESULT_ERROR = 'I_UNEXPECTED_RUNTIME_EXIT_RESULT_ERROR',
   I_DB_TRANSACTION_ERROR = 'I_DB_TRANSACTION_ERROR',
   I_UNKNOWN_ERROR = 'I_UNKNOWN_ERROR',
+  I_NO_SUCH_ELEMENT_ERROR = 'I_NO_SUCH_ELEMENT_ERROR',
 }
 
 export interface InternalErrorCodeMetadata {
@@ -13,7 +14,7 @@ export interface InternalErrorCodeMetadata {
    * This also serves as the default error message when an internal
    * error is thrown without a message.
    */
-  message: string
+  message: string;
 }
 
 /**
@@ -34,5 +35,8 @@ export const InternalErrorCodeMetadata: Record<InternalErrorCode, InternalErrorC
   },
   [InternalErrorCode.I_UNKNOWN_ERROR]: {
     message: 'An unknown error that was not expected occurred and not able to be handled.',
+  },
+  [InternalErrorCode.I_NO_SUCH_ELEMENT_ERROR]: {
+    message: 'The element that is being accessed does not exist in the data structure.',
   },
 }

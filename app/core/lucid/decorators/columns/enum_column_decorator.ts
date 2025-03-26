@@ -1,5 +1,5 @@
 import type { ColumnOptions } from '@adonisjs/lucid/types/model'
-import UnknownError from '#errors/unknown_error'
+import UnknownError from '#core/error/errors/unknown_error'
 import is from '@adonisjs/core/helpers/is'
 import { column } from '@adonisjs/lucid/orm'
 import { defu } from 'defu'
@@ -10,13 +10,13 @@ export type EnumColumnOptions<T extends { [x: string]: string | number }, N exte
     /**
      * The enum values
      */
-    values: T
+    values: T;
     /**
      * Whether the column is nullable or not
      *
      * @defaultValue `false`
      */
-    nullable?: N
+    nullable?: N;
   } & (
     N extends true
       ? {
@@ -26,16 +26,16 @@ export type EnumColumnOptions<T extends { [x: string]: string | number }, N exte
            *
            * @defaultValue `null`
            */
-          defaultTo?: T[keyof T] | null
+          defaultTo?: T[keyof T] | null;
         }
       : {
         /**
          * The default value for the column when column
          * is not nullable (required)
          */
-          defaultTo: T[keyof T]
+          defaultTo: T[keyof T];
         }
-    )
+    );
 }
 
 /**

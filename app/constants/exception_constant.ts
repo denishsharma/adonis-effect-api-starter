@@ -14,7 +14,7 @@ export interface ExceptionCodeMetadata {
    * This also serves as the default error message when an exception
    * is thrown without a message.
    */
-  message: string
+  message: string;
 }
 
 /**

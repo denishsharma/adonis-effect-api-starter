@@ -1,5 +1,5 @@
 import { ExceptionCode, ExceptionCodeMetadata } from '#constants/exception_constant'
-import { TaggedException } from '#core/error/tagged_exception'
+import { TaggedException } from '#core/error/factories/tagged_exception'
 import { SchemaDataType } from '#core/schema/schema_data_type'
 import { Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
@@ -15,7 +15,7 @@ export default class ForbiddenActionException extends TaggedException('forbidden
   code: ExceptionCode.E_FORBIDDEN_ACTION,
   message: ExceptionCodeMetadata[ExceptionCode.E_FORBIDDEN_ACTION].message,
   schema: Schema.Struct({
-    action: Schema.compose(SchemaDataType.String.SnakeCase, Schema.Uppercase).pipe(
+    action: Schema.compose(SchemaDataType.SnakeCase, Schema.Uppercase).pipe(
       Schema.annotations({
         description: 'The attempted action that was forbidden.',
       }),

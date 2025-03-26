@@ -1,5 +1,5 @@
 import type { ColumnOptions } from '@adonisjs/lucid/types/model'
-import UnknownError from '#errors/unknown_error'
+import UnknownError from '#core/error/errors/unknown_error'
 import is from '@adonisjs/core/helpers/is'
 import { column } from '@adonisjs/lucid/orm'
 import { defu } from 'defu'
@@ -15,7 +15,7 @@ export type BooleanColumnOptions<N extends boolean = false> = Partial<Omit<Colum
      *
      * @defaultValue `false`
      */
-    nullable?: N
+    nullable?: N;
   } & (
     N extends true
       ? {
@@ -25,16 +25,16 @@ export type BooleanColumnOptions<N extends boolean = false> = Partial<Omit<Colum
            *
            * @defaultValue `null`
            */
-          defaultTo?: boolean | null
+          defaultTo?: boolean | null;
         }
       : {
         /**
          * The default value for the column when column
          * is not nullable (required)
          */
-          defaultTo: boolean
+          defaultTo: boolean;
         }
-    )
+    );
 }
 
 /**

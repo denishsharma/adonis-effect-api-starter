@@ -1,17 +1,17 @@
-import type { TaggedException } from '#core/error/tagged_exception'
+import type { TaggedException } from '#core/error/factories/tagged_exception'
 import type { HttpContext } from '@adonisjs/core/http'
 import { ExceptionCode } from '#constants/exception_constant'
-import { ErrorUtility } from '#core/error/utils/error_utility'
+import { toSchemaParseError } from '#core/error/utils/error_utility'
 import { ResponseType } from '#core/http/constants/response_type_constant'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
-import { MakeResponseService } from '#core/http/services/response/make_response_service'
-import { RuntimeUtility } from '#core/runtime/utils/runtime_utility'
-import { SchemaUtility } from '#core/schema/utils/schema_utility'
-import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
+import HttpMakeResponseService from '#core/http/services/http_make_response_service'
+import { logErrorToTelemetry, withScopedTelemetry, withTelemetrySpan } from '#core/telemetry/utils/telemetry_utility'
+import { toException } from '#shared/error_handler/utils/convert_error_utility'
+import { ensureApplicationRuntimeDependencies, runPromise } from '#shared/runtime/utils/runtime_utility'
 import { ExceptionHandler } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { Cause, Effect, Schema } from 'effect'
+import { Cause, Effect, pipe, Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
@@ -52,19 +52,19 @@ export default class HttpExceptionHandler extends ExceptionHandler {
          * Convert the error to a tagged exception,
          * and handle the exception based on its type.
          */
-        const exception = ErrorUtility.toException()(error) as TaggedException<string, any>
+        const exception = toException()(error) as TaggedException<string, any>
 
-        const makeResponseService = yield* MakeResponseService
-        const exceptionResponse = yield* makeResponseService.exception(ctx)(exception)
+        const makeResponseService = yield* HttpMakeResponseService
+        const exceptionResponse = yield* makeResponseService.makeExceptionResponse()(exception)
         return yield* Effect.suspend(() =>
           Schema.encode(ExceptionResponse, { errors: 'all' })(exceptionResponse).pipe(
-            SchemaUtility.toSchemaParseError('Unexpected error while encoding exception response.', exceptionResponse),
+            toSchemaParseError('Unexpected error while encoding exception response.', exceptionResponse),
           ),
-        ).pipe(TelemetryUtility.withTelemetrySpan('encode_exception_response'))
+        ).pipe(withTelemetrySpan('encode_exception_response'))
       }).pipe(
-        RuntimeUtility.ensureDependencies(),
-        TelemetryUtility.withScopedTelemetry('global_error_handler'),
-        RuntimeUtility.run({ ctx }),
+        ensureApplicationRuntimeDependencies(),
+        withScopedTelemetry('global_error_handler'),
+        runPromise({ ctx }),
       )
     } catch (cause) {
       /**
@@ -98,9 +98,12 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * @note You should not attempt to send a response from this method.
    */
   async report(error: unknown, ctx: HttpContext) {
-    await TelemetryUtility.logError(error, ['adonis_exception', 'unknown'], 'global_error_handler').pipe(
-      TelemetryUtility.withTelemetrySpan('global_error_handler'),
-      RuntimeUtility.run({ ctx }),
+    await pipe(
+      error,
+      logErrorToTelemetry(['adonis_exception', 'unknown'], 'global_error_handler'),
+      toSchemaParseError('Unexpected error while logging error.', error),
+      withTelemetrySpan('global_error_handler'),
+      runPromise({ ctx }),
     )
 
     return super.report(error, ctx)

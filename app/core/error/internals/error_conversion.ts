@@ -1,207 +1,86 @@
-import type { TaggedExceptionOptions } from '#core/error/tagged_exception'
-import type { TaggedInternalErrorOptions } from '#core/error/tagged_internal_error'
+import type { TaggedExceptionOptions } from '#core/error/factories/tagged_exception'
+import type { TaggedInternalErrorOptions } from '#core/error/factories/tagged_internal_error'
 import type { UnknownRecord } from 'type-fest'
-import { InternalErrorCode } from '#constants/internal_error_constant'
-import { ErrorKind } from '#core/error/constants/error_kind_constant'
-import { causeOfUnknownError } from '#core/error/internals/shared'
-import { isTaggedException, isTaggedInternalError } from '#core/error/internals/validate_error'
-import SchemaParseError from '#errors/schema_parse_error'
-import UnknownError from '#errors/unknown_error'
-import InternalServerException from '#exceptions/internal_server_exception'
-import RouteNotFoundException from '#exceptions/route_not_found_exception'
-import ValidationException from '#exceptions/validation_exception'
-import { errors as appErrors } from '@adonisjs/core'
+import SchemaParseError from '#core/error/errors/schema_parse_error'
+import InternalServerException from '#core/error/exceptions/internal_server_exception'
+import { isTaggedException, isTaggedInternalError } from '#core/error/internals/is_error_type'
+import { makeInternalUnknownErrorFromException, makeInternalUnknownErrorFromTaggedError, makeInternalUnknownErrorFromUnknown } from '#core/error/internals/make_internal_unknown_error'
 import { Exception } from '@adonisjs/core/exceptions'
-import is from '@adonisjs/core/helpers/is'
-import { errors as vineErrors } from '@vinejs/vine'
 import { defu } from 'defu'
-import { flow, Inspectable, Match, ParseResult, pipe } from 'effect'
-import * as lodash from 'lodash-es'
+import { Effect, flow, Match, ParseResult } from 'effect'
 
 /**
- * Converts an unknown error into a known exception or returns `undefined`.
+ * Converts a parse error into a schema parse error.
+ * The resulting error includes the issue details, associated data, and a message.
  *
- * Matches specific error types and transforms them into corresponding exceptions.
- * If the error type is unrecognized, it returns `undefined`.
- *
- * @example
- * ```ts
- * try {
- *   throw new appErrors.E_ROUTE_NOT_FOUND('Route not found');
- * } catch (error) {
- *   const exception = toKnownExceptionOrUndefined()(error);
- *   console.log(exception); // Instance of RouteNotFoundException
- * }
- * ```
+ * @param message - The custom message to include in the schema parse error.
+ * @param data - The data relevant to the schema parse error.
  */
-export function toKnownExceptionOrUndefined() {
-  /**
-   * @param error The unknown error to convert.
-   */
-  return (error: unknown) =>
-    Match.value(error).pipe(
-      Match.when(isTaggedException<string, any>(), err => err),
-      Match.when(Match.instanceOf(appErrors.E_ROUTE_NOT_FOUND), RouteNotFoundException.fromException()),
-      Match.when(Match.instanceOf(vineErrors.E_VALIDATION_ERROR), ValidationException.fromException()),
-      Match.orElse(() => undefined),
-    )
+export function toSchemaParseError(message?: string, data?: unknown) {
+  return <A, E, R>(
+    effect: Extract<E, ParseResult.ParseError> extends never
+      ? never & { error: 'E must contain ParseResult.ParseError' }
+      : Effect.Effect<A, E, R>,
+  ) => effect.pipe(
+    Effect.catchIf(
+      error => error instanceof ParseResult.ParseError,
+      error => SchemaParseError.fromParseError(data, message)(error),
+    ),
+  )
 }
 
 /**
- * Converts an unknown error into a known internal error or returns `undefined`.
+ * Converts an unknown error into a standardized internal error (`UnknownError`).
  *
- * Matches specific error types and transforms them into corresponding internal errors.
- * If the error type is unrecognized, it returns `undefined`.
+ * This function ensures that errors are consistently formatted, preserving as
+ * much relevant information as possible. It handles different error types:
  *
- * @example
- * ```ts
- * try {
- *   throw new Error("Something went wrong");
- * } catch (error) {
- *   const internalError = toKnownInternalErrorOrUndefined()(error);
- *   console.error(internalError); // undefined (error is not a known internal error)
- * }
+ * - **Tagged internal errors & exceptions**: Wrapped inside an `UnknownError`
+ *   while retaining their original details.
+ * - **Exception instances**: Extracts and includes relevant metadata.
+ * - **Unrecognized errors**: Creates a new `UnknownError` with the provided
+ *   message and extracts the original error as its cause.
+ *
+ * This allows for better debugging and error tracking by ensuring all errors
+ * conform to a known structure.
+ *
+ * @param message - Custom error message to use when wrapping unknown errors.
+ * @param options - Additional options for configuring the internal error.
  */
-export function toKnownInternalErrorOrUndefined() {
-  /**
-   * @param error The unknown error to convert.
-   */
-  return (error: unknown) =>
-    Match.value(error).pipe(
-      Match.when(isTaggedInternalError<string, any>(), err => err),
-      Match.when(ParseResult.isParseError, err => new SchemaParseError(err.issue)),
-      Match.orElse(() => undefined),
-    )
-}
-
-/**
- * Converts an unknown error into a known exception.
- *
- * If the error cannot be identified as known or a
- * valid exception, then error is rethrown as-is.
- *
- * @example
- * ```ts
- * try {
- *   throw new Error("Something went wrong");
- * } catch (error) {
- *   const exception = toExceptionOrThrowUnknown()(error);
- *   console.error(exception);
- * }
- * ```
- */
-export function toExceptionOrThrowUnknown() {
-  return (error: unknown) => flow(
-    toKnownExceptionOrUndefined(),
-    (exception) => {
-      if (is.nullOrUndefined(exception)) {
-        throw error
-      }
-
-      return exception
+export function toInternalUnknownError(message?: string, options?: Omit<TaggedInternalErrorOptions, 'cause'> & { data?: UnknownRecord }) {
+  const resolvedOptions = defu(
+    options,
+    {
+      data: undefined,
+      code: undefined,
     },
-  )(error)
-}
+  )
 
-/**
- * Options for converting an unknown error into a known exception.
- */
-export interface ToKnownExceptionOptions extends Omit<TaggedInternalErrorOptions, 'cause'> {
-  /**
-   * Additional context data to attach to the unknown error.
-   */
-  data?: UnknownRecord
-}
-
-/**
- * Converts an unknown error into a standardized internal error.
- *
- * - If the error is a tagged internal error or exception, it is wrapped in `UnknownError` while preserving its details.
- * - If the error is an `Exception` instance, relevant metadata is extracted and included.
- * - If the error does not match any known types, a new `UnknownError` is created using the provided message and extracted cause.
- *
- * @param message Custom error message.
- * @param options Additional options for the internal error.
- *
- * @example
- * ```ts
- * try {
- *   throw new Error("Unexpected failure");
- * } catch (error) {
- *   const internalError = toInternalUnknownError("Something went wrong")(error);
- *   console.error(internalError); // UnknownError with extracted cause and metadata.
- * }
- * ```
- */
-export function toInternalUnknownError(message?: string, options?: ToKnownExceptionOptions) {
-  const resolvedOptions = defu(options, {
-    data: undefined,
-    code: undefined,
-  })
-
-  /**
-   * @param error The unknown error to convert.
-   */
-  return (error: unknown) => {
-    const cause = pipe(error, causeOfUnknownError())
-
-    return Match.value(error).pipe(
+  return (error: unknown) =>
+    Match.value(error).pipe(
       Match.whenOr(
         isTaggedInternalError<string, any>(),
         isTaggedException<string, any>(),
-        err => new UnknownError(
-          lodash.defaultTo(message, err.message),
-          {
-            cause,
-            data: defu(lodash.defaultTo(Inspectable.toJSON(resolvedOptions.data) as UnknownRecord, err.toJSON()), err._kind === ErrorKind.EXCEPTION ? { __exception__: err.code } : {}),
-            code: lodash.defaultTo(resolvedOptions.code, err._kind === ErrorKind.INTERNAL ? err.code : InternalErrorCode.I_UNKNOWN_ERROR),
-          },
-        ),
+        makeInternalUnknownErrorFromTaggedError({ message, ...resolvedOptions }),
       ),
-      Match.when(
-        Match.instanceOf(Exception),
-        err => new UnknownError(
-          lodash.defaultTo(message, err.message),
-          {
-            cause,
-            data: defu(lodash.defaultTo(Inspectable.toJSON(resolvedOptions.data) as UnknownRecord, {}), { __exception__: err.code }),
-            code: resolvedOptions.code,
-          },
-        ),
-      ),
-      Match.orElse(() => new UnknownError(
-        message,
-        {
-          cause: lodash.defaultTo(cause, new Error(Inspectable.toStringUnknown(error))),
-          data: Inspectable.toJSON(resolvedOptions.data) as UnknownRecord,
-          code: resolvedOptions.code,
-        },
-      )),
+      Match.when(Match.instanceOf(Exception), makeInternalUnknownErrorFromException({ message, ...resolvedOptions })),
+      Match.orElse(makeInternalUnknownErrorFromUnknown({ message, ...resolvedOptions })),
     )
-  }
 }
 
 /**
- * Converts an unknown error into an `InternalServerException`.
- * Ensures the error is properly wrapped and retains relevant details.
+ * Converts an unknown error into an `InternalServerException`, ensuring it is
+ * properly wrapped while preserving relevant details.
  *
- * @param message Custom error message.
- * @param options Additional options for the exception.
+ * This function standardizes error handling by:
+ * - Wrapping known and unknown errors into a structured `InternalServerException`.
+ * - Retaining important metadata, such as the original error message and stack trace.
+ * - Providing a consistent format for internal server errors to improve debugging.
  *
- * @example
- * ```ts
- * try {
- *   throw new TypeError("Invalid operation");
- * } catch (error) {
- *   const exception = toInternalServerException("Something went wrong")(error);
- *   console.error(exception);
- * }
- * ```
+ * @param message - Custom error message for the exception.
+ * @param options - Additional options to configure the exception.
  */
 export function toInternalServerException(message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-  /**
-   * @param error The unknown error to convert.
-   */
   return (error: unknown) =>
     Match.value(error).pipe(
       Match.whenOr(
@@ -216,33 +95,4 @@ export function toInternalServerException(message?: string, options?: Omit<Tagge
         InternalServerException.fromUnknownError(message, options),
       )),
     )
-}
-
-/**
- * Converts an unknown error into a known exception.
- *
- * If the error cannot be identified, it is wrapped as an `InternalServerException`
- * using the provided message and options.
- *
- * @param message Fallback error message if the error is unidentified.
- * @param options Additional options for the `InternalServerException`.
- *
- * @example
- * ```ts
- * try {
- *   throw new Error("Unexpected failure");
- * } catch (error) {
- *   const exception = toException("Operation failed")(error);
- *   console.error(exception);
- * }
- * ```
- */
-export function toException(message?: string, options?: Omit<TaggedExceptionOptions, 'cause'>) {
-  /**
-   * @param error The unknown error to convert.
-   */
-  return (error: unknown) => flow(
-    toKnownExceptionOrUndefined(),
-    exception => lodash.defaultTo(exception, toInternalServerException(message, options)(error)),
-  )(error)
 }

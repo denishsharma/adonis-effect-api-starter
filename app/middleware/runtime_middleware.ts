@@ -1,13 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { ErrorUtility } from '#core/error/utils/error_utility'
+import { ensureContextType } from '#core/effect/utils/effect_utility'
+import { toSchemaParseError } from '#core/error/utils/error_utility'
 import { ExceptionResponse } from '#core/http/schemas/exception_response_schema'
 import { SuccessResponse } from '#core/http/schemas/success_response_schema'
-import { MakeResponseService } from '#core/http/services/response/make_response_service'
-import { RuntimeUtility } from '#core/runtime/utils/runtime_utility'
-import { SchemaUtility } from '#core/schema/utils/schema_utility'
-import { TelemetryUtility } from '#core/telemetry/utils/telemetry_utility'
-import { EffectUtility } from '#utils/effect_utility'
+import HttpMakeResponseService from '#core/http/services/http_make_response_service'
+import { withScopedTelemetry, withTelemetrySpan } from '#core/telemetry/utils/telemetry_utility'
+import { toException } from '#shared/error_handler/utils/convert_error_utility'
+import { ensureApplicationRuntimeDependencies, runPromise } from '#shared/runtime/utils/runtime_utility'
 import is from '@adonisjs/core/helpers/is'
 import { Effect, Either, Ref, Schema } from 'effect'
 import { StatusCodes } from 'http-status-codes'
@@ -30,7 +30,7 @@ export default class RuntimeMiddleware {
       const content = ctx.response.content![0]
 
       const program = Effect.gen(function* () {
-        const makeResponseService = yield* MakeResponseService
+        const makeResponseService = yield* HttpMakeResponseService
 
         /**
          * Extract the effectful program from the content
@@ -52,23 +52,23 @@ export default class RuntimeMiddleware {
             if (is.promise(content) || is.asyncFunction(content)) {
               yield* Ref.set(effectful, Effect.tryPromise({
                 try: async () => is.asyncFunction(content) ? await content() : await content,
-                catch: ErrorUtility.toException(),
+                catch: toException(),
               }))
             } else {
               yield* Ref.set(effectful, Effect.try({
                 try: () => content,
-                catch: ErrorUtility.toException(),
+                catch: toException(),
               }))
             }
           }
 
           return yield* effectful.get
         }).pipe(
-          TelemetryUtility.withTelemetrySpan('extract_effect'),
+          withTelemetrySpan('extract_effect'),
         )
 
         const effectResult = yield* effectProgram.pipe(
-          TelemetryUtility.withTelemetrySpan('execute_effect'),
+          withTelemetrySpan('execute_effect'),
         )
 
         return yield* Effect.gen(function* () {
@@ -92,13 +92,13 @@ export default class RuntimeMiddleware {
            * response.
            */
           if (accepts === 'json') {
-            const successResponse = yield* makeResponseService.success(ctx)(effectResult)
+            const successResponse = yield* makeResponseService.makeSuccessResponse()(effectResult)
             ctx.response.status(successResponse.status)
             return yield* Effect.suspend(() =>
               Schema.encode(SuccessResponse, { errors: 'all' })(successResponse).pipe(
-                SchemaUtility.toSchemaParseError('Unexpected error while encoding success response.', successResponse),
+                toSchemaParseError('Unexpected error while encoding success response.', successResponse),
               ),
-            ).pipe(TelemetryUtility.withTelemetrySpan('encode_success_response'))
+            ).pipe(withTelemetrySpan('encode_success_response'))
           }
 
           /**
@@ -110,17 +110,17 @@ export default class RuntimeMiddleware {
            */
           ctx.response.status(StatusCodes.OK)
           return effectResult
-        }).pipe(TelemetryUtility.withTelemetrySpan('process_client_response'))
-      }).pipe(EffectUtility.withContextType<any>())
+        }).pipe(withTelemetrySpan('process_client_response'))
+      }).pipe(ensureContextType<any>())
 
       /**
        * Run the program to process the response content
        * to be sent as a response.
        */
       const response = await program.pipe(
-        RuntimeUtility.ensureDependencies(),
-        TelemetryUtility.withScopedTelemetry('runtime_middleware'),
-        RuntimeUtility.run({ ctx }),
+        ensureApplicationRuntimeDependencies(),
+        withScopedTelemetry('runtime_middleware'),
+        runPromise({ ctx }),
       )
 
       /**

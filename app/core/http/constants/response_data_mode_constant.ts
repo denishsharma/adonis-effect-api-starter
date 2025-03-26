@@ -32,7 +32,7 @@ export interface ResponseDataModeMetadata {
   /**
    * A human-readable message describing the response data mode.
    */
-  message: string
+  message: string;
 }
 
 /**

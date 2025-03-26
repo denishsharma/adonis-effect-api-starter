@@ -1,7 +1,7 @@
-import type { TaggedInternalErrorOptions } from '#core/error/tagged_internal_error'
+import type { TaggedInternalErrorOptions } from '#core/error/factories/tagged_internal_error'
 import { InternalErrorCode, InternalErrorCodeMetadata } from '#constants/internal_error_constant'
-import { TaggedInternalError } from '#core/error/tagged_internal_error'
-import { ErrorUtility } from '#core/error/utils/error_utility'
+import { TaggedInternalError } from '#core/error/factories/tagged_internal_error'
+import { toInternalUnknownError } from '#core/error/utils/error_utility'
 import { Schema } from 'effect'
 
 /**
@@ -33,6 +33,6 @@ export default class DatabaseTransactionError extends TaggedInternalError('datab
     /**
      * @param error The unknown error that caused the database transaction error.
      */
-    return (error: unknown) => new DatabaseTransactionError(data, message, { ...options, cause: ErrorUtility.toInternalUnknownError()(error) })
+    return (error: unknown) => new DatabaseTransactionError(data, message, { ...options, cause: toInternalUnknownError()(error) })
   }
 }
