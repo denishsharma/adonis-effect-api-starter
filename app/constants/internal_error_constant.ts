@@ -5,6 +5,7 @@ export enum InternalErrorCode {
   I_DB_TRANSACTION_ERROR = 'I_DB_TRANSACTION_ERROR',
   I_UNKNOWN_ERROR = 'I_UNKNOWN_ERROR',
   I_NO_SUCH_ELEMENT_ERROR = 'I_NO_SUCH_ELEMENT_ERROR',
+  I_PAYLOAD_NOT_VALIDATED_ERROR = 'I_PAYLOAD_NOT_VALIDATED_ERROR',
 }
 
 export interface InternalErrorCodeMetadata {
@@ -38,5 +39,8 @@ export const InternalErrorCodeMetadata: Record<InternalErrorCode, InternalErrorC
   },
   [InternalErrorCode.I_NO_SUCH_ELEMENT_ERROR]: {
     message: 'The element that is being accessed does not exist in the data structure.',
+  },
+  [InternalErrorCode.I_PAYLOAD_NOT_VALIDATED_ERROR]: {
+    message: 'You have requested data from a payload that has not been validated yet. Please validate the payload before accessing the data.',
   },
 }
