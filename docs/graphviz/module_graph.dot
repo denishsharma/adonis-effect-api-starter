@@ -1,0 +1,87 @@
+digraph ModuleDependencies {
+    layout = "dot";
+    
+    rankdir = BT;
+    pad = 0.5;
+    overlap = "false";
+    
+    node [shape = "box"; style = "rounded, filled"; fillcolor = "white"; fontname = "Arial"; fontsize = "10"; margin = "0.1"; height = "0";];
+    edge [fontname = "Arial"; fontsize = "10"; arrowhead = "open"; arrowsize = 0.5;];
+    
+    "#core/data_payload" [fillcolor = "#D6EAF8";];
+    "#core/db" [fillcolor = "#D6EAF8";];
+    "#core/effect" [fillcolor = "#D6EAF8";];
+    "#core/error" [fillcolor = "#D6EAF8";];
+    "#core/http" [fillcolor = "#D6EAF8";];
+    "#core/lucid" [fillcolor = "#D6EAF8";];
+    "#core/schema" [fillcolor = "#D6EAF8";];
+    "#core/telemetry" [fillcolor = "#D6EAF8";];
+    "#core/validation" [fillcolor = "#D6EAF8";];
+    
+    "#shared/common" [fillcolor = "#D5F5E3";];
+    "#shared/error_handler" [fillcolor = "#D5F5E3";];
+    "#shared/runtime" [fillcolor = "#D5F5E3";];
+    
+    "#features/" [fillcolor = "#f0e5f0";];
+    
+    "#middleware/runtime" [fillcolor = "#fceade";];
+    "#middleware/telemetry" [fillcolor = "#fceade";];
+    
+    // ------------------------------
+    // Module dependencies
+    // ------------------------------
+    
+    // #core/data_payload
+    "#core/data_payload" -> "#core/error";
+    "#core/data_payload" -> "#core/effect";
+    "#core/data_payload" -> "#core/telemetry";
+    "#core/data_payload" -> "#core/http";
+    "#core/data_payload" -> "#core/validation";
+    
+    // #core/db
+    "#core/db" -> "#core/error";
+    "#core/db" -> "#core/telemetry";
+    
+    // #core/effect
+    "#core/effect" -> "#core/error";
+    
+    // #core/http
+    "#core/http" -> "#core/error";
+    "#core/http" -> "#core/telemetry";
+    "#core/http" -> "#core/validation";
+    
+    // #core/lucid
+    "#core/lucid" -> "#core/error";
+    "#core/lucid" -> "#core/telemetry";
+    
+    // #core/telemetry
+    "#core/telemetry" -> "#core/error";
+    
+    // #core/validation
+    "#core/validation" -> "#core/error";
+    
+    // #shared/common
+    "#shared/common" -> "#core/error";
+    "#shared/common" -> "#core/effect";
+    
+    // #shared/error_handler
+    "#shared/error_handler" -> "#core/error";
+    "#shared/error_handler" -> "#core/validation";
+    
+    // #shared/runtime
+    "#shared/runtime" -> "#core/error";
+    "#shared/runtime" -> "#core/http";
+    "#shared/runtime" -> "#core/telemetry";
+    "#shared/runtime" -> "#shared/error_handler";
+    
+    // #middleware/runtime
+    "#middleware/runtime" -> "#core/error";
+    "#middleware/runtime" -> "#core/http";
+    "#middleware/runtime" -> "#core/telemetry";
+    "#middleware/runtime" -> "#core/effect";
+    "#middleware/runtime" -> "#shared/runtime";
+    "#middleware/runtime" -> "#shared/error_handler";
+    
+    // #middleware/telemetry
+    "#middleware/telemetry" -> "#core/http";
+}

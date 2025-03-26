@@ -1,0 +1,59 @@
+BEG_G {
+  int      cnt, i;
+  node_t   tp, hp;
+  node_t   stack[node_t];
+  edge_t   anEdge;
+  int      cycleFound = 0;  // Flag to check if a cycle exists
+
+  $tvtype = TV_prepostfwd;  // Pre-post forward traversal
+  $tvroot = fstnode($);     // Start from the first node
+}
+
+N {
+  if (stack[$]) {
+    stack[$] = NULL;
+  } else if ($tvedge == NULL) {  // Current root node
+    stack[$] = $;
+  } else {
+    stack[$] = $tvedge.tail;
+  }
+}
+
+E {
+  if (stack[$.head]) {  // Cycle detected
+    cycleFound = 1;
+    tp = $.tail;
+    hp = $.head;
+
+    // Highlight the detected cycle
+    $.color = "red";
+
+    tp.color = "green";  // Mark the starting node in green
+
+    while (tp != $.head) {
+      tp.color = "red";
+      tp.fillcolor = "#FFAAAA";  // Reddish background
+      tp.style = "filled";  // Ensure fill color is applied
+
+      hp.color = "red";
+      hp.fillcolor = "#FFAAAA";
+      hp.style = "filled";
+
+      hp = tp;
+      tp = stack[tp];
+
+      anEdge = isEdge(tp, hp, "");
+      anEdge.color = "red";
+    }
+  }
+}
+
+END_G {
+  if (cycleFound) {
+    $.fontname = "Arial";  // Set font to Arial
+    $.label = "Cycle Detected";  // Set graph title
+    $.labelloc = "t";  // Position title at the top
+    $.fontsize = 20;  // Increase title font size
+    $.fontcolor = "red";  // Make title red
+  }
+}

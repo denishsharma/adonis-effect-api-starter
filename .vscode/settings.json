@@ -31,5 +31,8 @@
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "typescript.tsdk": "node_modules\\typescript\\lib",
   "javascript.preferences.importModuleSpecifier": "non-relative",
-  "typescript.preferences.importModuleSpecifier": "non-relative"
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "[dot]": {
+    "editor.defaultFormatter": "tintinweb.graphviz-interactive-preview"
+  }
 }
